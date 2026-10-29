@@ -7,6 +7,7 @@ import {
   BarChart3,
   Bookmark,
   Database,
+  FileText,
   Hash,
   Home,
   KeyRound,
@@ -22,6 +23,7 @@ import { useWorkspace, updateWorkspace } from "@/hooks/use-workspace";
 
 const navigation = [
   { href: "/", label: "Overview", icon: Home },
+  { href: "/transcript", label: "Transcript & Summary", icon: FileText },
   { href: "/keywords", label: "Topic research", icon: Search },
   { href: "/extract", label: "Tag extractor", icon: Tags },
   { href: "/trending", label: "Short-term trends", icon: BarChart3 },

@@ -133,3 +133,58 @@ export type ExtractRequest = z.infer<typeof extractRequestSchema>;
 export type ResearchRequest = z.infer<typeof researchRequestSchema>;
 export type TrendingRequest = z.infer<typeof trendingRequestSchema>;
 export type CompetitorRequest = z.infer<typeof competitorRequestSchema>;
+
+export const youtubeMetadataRequestSchema = z.object({
+  input: z.string({ error: "Enter a YouTube video URL or ID." })
+    .trim()
+    .min(1, "Enter a YouTube video URL or ID.")
+    .max(500, "Keep the link or ID to 500 characters or fewer."),
+});
+
+export const youtubeTranscriptRequestSchema = z.object({
+  input: z.string({ error: "Enter a YouTube video URL or ID." })
+    .trim()
+    .min(1, "Enter a YouTube video URL or ID.")
+    .max(500, "Keep the link or ID to 500 characters or fewer."),
+  lang: z.string().trim().max(15).optional(),
+  trackLanguage: z.string().trim().max(15).optional(),
+  outputLanguage: z.string().trim().max(15).optional(),
+});
+
+export const youtubeSummaryRequestSchema = z.object({
+  videoId: z.string({ error: "Provide a valid video ID." })
+    .trim()
+    .min(1, "Provide a valid video ID.")
+    .max(64, "Video ID is too long."),
+  transcript: z.string({ error: "Provide transcript text to summarize." })
+    .trim()
+    .min(10, "Transcript text must contain at least 10 characters to summarize.")
+    .max(500_000, "Transcript exceeds the maximum supported length."),
+  summaryType: z.enum(["concise", "detailed"], { error: "Choose concise or detailed summary." }).default("concise"),
+  language: z.string().trim().max(20).optional(),
+});
+
+export const youtubeTranslateRequestSchema = z.object({
+  text: z.string().trim().max(500_000).optional(),
+  segments: z.array(
+    z.object({
+      text: z.string(),
+      start: z.number(),
+      duration: z.number(),
+      timestamp: z.string(),
+    })
+  ).optional(),
+  targetLanguage: z.string({ error: "Select a target language." })
+    .trim()
+    .min(2, "Language code must be at least 2 characters.")
+    .max(15, "Language code must be 15 characters or fewer."),
+  sourceLanguage: z.string().trim().max(15).optional(),
+}).refine((data) => Boolean(data.text || (data.segments && data.segments.length > 0)), {
+  message: "Provide either full text or transcript segments to translate.",
+});
+
+export type YouTubeMetadataRequest = z.infer<typeof youtubeMetadataRequestSchema>;
+export type YouTubeTranscriptRequest = z.infer<typeof youtubeTranscriptRequestSchema>;
+export type YouTubeSummaryRequest = z.infer<typeof youtubeSummaryRequestSchema>;
+export type YouTubeTranslateRequest = z.infer<typeof youtubeTranslateRequestSchema>;
+

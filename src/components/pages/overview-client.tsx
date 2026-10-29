@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Activity, ArrowRight, ArrowUpRight, BarChart3, Database, Hash, Search, ShieldCheck, Tags, Video } from "lucide-react";
+import { Activity, ArrowRight, ArrowUpRight, BarChart3, Database, FileText, Hash, Search, ShieldCheck, Tags, Video } from "lucide-react";
 import { Button, EmptyState, PageHeader, Panel, StatCard } from "@/components/shared/ui";
 import { Input, Select } from "@/components/shared/form-fields";
 import { useWorkspace } from "@/hooks/use-workspace";
@@ -11,7 +11,7 @@ import { formatDate } from "@/lib/format";
 import { normalizeForMatch } from "@/lib/text";
 import type { VideoRecord } from "@/types/research";
 
-type Operation = "research" | "extract" | "hashtags" | "trending" | "competitors";
+type Operation = "research" | "extract" | "hashtags" | "trending" | "competitors" | "transcript";
 
 const activityOperationLabels: Readonly<Record<string, string>> = {
   research: "Topic research",
@@ -19,9 +19,11 @@ const activityOperationLabels: Readonly<Record<string, string>> = {
   trend: "Short-term trends",
   competitor: "Tag comparison",
   hashtag: "Hashtag research",
+  transcript: "Transcript & Summary",
 };
 
 const tools = [
+  { href: "/transcript", icon: FileText, title: "Transcript & Summary", description: "Extract spoken captions with synchronized timestamps, generate AI summaries, and translate." },
   { href: "/keywords", icon: Search, title: "Topic research", description: "Explore suggestions, title words, public tags, hashtags, and available search-volume estimates." },
   { href: "/extract", icon: Tags, title: "Tag extractor", description: "View public tags added by uploaders to a video or recent channel uploads." },
   { href: "/trending", icon: BarChart3, title: "Short-term trends", description: "See how often terms appear in time-filtered video samples or regional popular videos." },
@@ -39,8 +41,8 @@ export function OverviewClient() {
   const launch = () => {
     const value = input.trim();
     if (!value) return;
-    const routes: Record<Operation, string> = { research: "/keywords", extract: "/extract", hashtags: "/hashtags", trending: "/trending", competitors: "/competitors" };
-    const parameter = operation === "extract" || operation === "competitors" ? "input" : "query";
+    const routes: Record<Operation, string> = { research: "/keywords", extract: "/extract", hashtags: "/hashtags", trending: "/trending", competitors: "/competitors", transcript: "/transcript" };
+    const parameter = operation === "extract" || operation === "competitors" || operation === "transcript" ? "input" : "query";
     router.push(`${routes[operation]}?${parameter}=${encodeURIComponent(value)}`);
   };
 

@@ -302,3 +302,88 @@ export interface WorkspaceState {
   trendSnapshots: TrendSnapshot[];
   preferences: WorkspacePreferences;
 }
+
+export interface VideoMetadataDetails {
+  id: string;
+  url: string;
+  title: string;
+  channelTitle: string;
+  channelUrl: string | null;
+  thumbnailUrl: string | null;
+  durationSeconds: number | null;
+  durationFormatted: string | null;
+  publishedAt: string | null;
+  viewCount: number | null;
+  description: string | null;
+}
+
+export interface TranscriptSegmentItem {
+  text: string;
+  start: number;
+  duration: number;
+  timestamp: string;
+}
+
+export interface CaptionTrackInfo {
+  languageCode: string;
+  name: string;
+  isAutomatic: boolean;
+  kind?: string;
+  vssId?: string;
+}
+
+export interface TranscriptPayload {
+  videoId: string;
+  videoMetadata: VideoMetadataDetails;
+  sourceLanguage: string;
+  sourceLanguageName: string;
+  outputLanguage: string;
+  outputLanguageName: string;
+  isTranslated: boolean;
+  isAutomatic: boolean;
+  isHumanCreated: boolean;
+  availableLanguages: string[];
+  segments: TranscriptSegmentItem[];
+  originalSegments: TranscriptSegmentItem[];
+  fullText: string;
+  charCount: number;
+  wordCount: number;
+  accuracyDisclosure: string;
+
+  // Dedicated language tracking fields
+  languageMode?: "auto" | "manual";
+  languageDetectionStatus?: "pending" | "detected" | "multilingual" | "uncertain";
+  selectedTranscriptLanguage: string;
+  actualTranscriptLanguage: string;
+  captionTrackLanguage: string | null;
+  languageDetectionMethod: string;
+  translationStatus: "not_needed" | "completed" | "failed";
+  isLanguageUncertain: boolean;
+  availableCaptionTracks: CaptionTrackInfo[];
+}
+
+export interface SummarySectionItem {
+  title: string;
+  points: string[];
+}
+
+export interface SummaryPayload {
+  videoId: string;
+  overview: string;
+  keyTakeaways: string[];
+  sections: SummarySectionItem[];
+  language: string;
+  modelUsed: string;
+  summaryType: "concise" | "detailed";
+  generatedAt: string;
+}
+
+export interface TranslationPayload {
+  targetLanguage: string;
+  targetLanguageName: string;
+  sourceLanguage: string;
+  segments: TranscriptSegmentItem[];
+  fullText: string;
+  service: string;
+}
+

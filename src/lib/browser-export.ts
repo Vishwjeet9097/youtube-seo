@@ -2,9 +2,35 @@ const MANUAL_COPY_ERROR = "Copy the text manually. Automatic copying is unavaila
 
 export async function copyText(text: string): Promise<void> {
   if (!text) throw new Error("Enter or select text to copy, then try again.");
-  if (!navigator.clipboard?.writeText) throw new Error(MANUAL_COPY_ERROR);
-  try { await navigator.clipboard.writeText(text); }
-  catch { throw new Error(MANUAL_COPY_ERROR); }
+
+  if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return;
+    } catch {
+      // Fall through to document.execCommand fallback
+    }
+  }
+
+  if (typeof document !== "undefined") {
+    try {
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
+      textarea.style.position = "fixed";
+      textarea.style.left = "-9999px";
+      textarea.style.top = "-9999px";
+      textarea.setAttribute("readonly", "");
+      document.body.appendChild(textarea);
+      textarea.select();
+      const success = document.execCommand("copy");
+      document.body.removeChild(textarea);
+      if (success) return;
+    } catch {
+      // Fall through
+    }
+  }
+
+  throw new Error(MANUAL_COPY_ERROR);
 }
 
 export function downloadText(content: string, filename: string, mimeType: string): void {
