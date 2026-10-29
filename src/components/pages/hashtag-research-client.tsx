@@ -23,8 +23,32 @@ export function HashtagResearchClient() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
   const defaultsApplied = useRef(false);
+  const autoSubmittedRef = useRef(false);
 
-  useEffect(() => { const value = new URLSearchParams(window.location.search).get("query"); if (value) setQuery(value); }, []);
+  const run = async (overrideQuery?: string) => {
+    const targetQuery = (overrideQuery ?? query).trim();
+    if (targetQuery.length < 2) { setError("Enter at least 2 characters for the topic."); return; }
+    setLoading(true); setError(null);
+    try {
+      const publishedAfter = new Date(Date.now() - Number(days) * 86_400_000).toISOString();
+      const response = await postApi<ResearchResult>("/api/research", { query: targetQuery, region, language, maxResults: 50, includeSuggestions: false, includeGeneratedCandidates: false, publishedAfter });
+      setResult(response.data);
+      updateWorkspace((state) => ({ ...state, activities: [createActivity("hashtag", targetQuery, response.data.hashtags.length), ...state.activities] }));
+    } catch (caught) { setError(caught instanceof Error ? caught.message : "We couldn’t load hashtags. Try again."); }
+    finally { setLoading(false); }
+  };
+
+  useEffect(() => {
+    const value = new URLSearchParams(window.location.search).get("query");
+    if (value) {
+      setQuery(value);
+      if (!autoSubmittedRef.current && value.trim().length >= 2) {
+        autoSubmittedRef.current = true;
+        void run(value);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   useEffect(() => {
     if (!workspace.hydrated || defaultsApplied.current) return;
     defaultsApplied.current = true;
@@ -48,17 +72,7 @@ export function HashtagResearchClient() {
   const titleHashtags = result ? [...new Set(result.videos.flatMap((video) => video.hashtags.title))] : [];
   const descriptionHashtags = result ? [...new Set(result.videos.flatMap((video) => video.hashtags.description))] : [];
 
-  const run = async () => {
-    if (query.trim().length < 2) { setError("Enter at least 2 characters for the topic."); return; }
-    setLoading(true); setError(null);
-    try {
-      const publishedAfter = new Date(Date.now() - Number(days) * 86_400_000).toISOString();
-      const response = await postApi<ResearchResult>("/api/research", { query: query.trim(), region, language, maxResults: 50, includeSuggestions: false, includeGeneratedCandidates: false, publishedAfter });
-      setResult(response.data);
-      updateWorkspace((state) => ({ ...state, activities: [createActivity("hashtag", query.trim(), response.data.hashtags.length), ...state.activities] }));
-    } catch (caught) { setError(caught instanceof Error ? caught.message : "We couldn’t load hashtags. Try again."); }
-    finally { setLoading(false); }
-  };
+
 
   const save = () => {
     if (!result) return;
@@ -213,5 +227,23 @@ export function HashtagResearchClient() {
     </div>
   );
 }
-function Metric({ label, value }: { label: string; value: number }) { return <div className="metric-card"><p className="text-[11px] font-bold uppercase tracking-[0.08em] text-muted">{label}</p><p className="mt-3 text-[28px] font-bold leading-none tracking-[-0.04em] tabular-nums">{value}</p></div>; }
+function Metric({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="metric-card">
+      <div className="flex items-center justify-between">
+        <p className="font-mono text-[11px] font-bold uppercase tracking-[0.1em] text-muted">{label}</p>
+        <span className="font-mono text-[9px] font-bold text-muted/60">NODE</span>
+      </div>
+      <p className="mt-2 text-[30px] font-extrabold leading-none tracking-[-0.04em] tabular-nums font-mono text-foreground">{value}</p>
+      <div className="mt-3 flex items-center gap-1.5 pt-2 border-t border-border/50">
+        <div className="h-1 flex-1 overflow-hidden rounded-full bg-surface-muted border border-border/40">
+          <div
+            className="h-full rounded-full bg-gradient-to-r from-brand to-brand-bright"
+            style={{ width: value > 0 ? `${Math.min(100, Math.max(20, value * 6))}%` : "15%" }}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
 function isResearchResult(value: unknown): value is ResearchResult { return Boolean(value && typeof value === "object" && "query" in value && "videos" in value && "hashtags" in value); }

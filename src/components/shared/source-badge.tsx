@@ -18,13 +18,18 @@ export function SourceBadge({ source }: { source: SourceType }) {
 }
 
 export function TrendBadge({ status, change }: { status: TrendStatus; change?: number | null }) {
-  const map: Record<TrendStatus, { label: string; tone: "success" | "neutral" | "danger" | "warning" }> = {
-    rising: { label: "Rising", tone: "success" },
-    stable: { label: "Stable", tone: "neutral" },
-    falling: { label: "Falling", tone: "danger" },
-    new_observation: { label: "No comparison yet", tone: "warning" },
-    unavailable: { label: "Not available", tone: "neutral" },
+  const map: Record<TrendStatus, { label: string; symbol: string; tone: "success" | "neutral" | "danger" | "warning" }> = {
+    rising: { label: "Rising", symbol: "▲", tone: "success" },
+    stable: { label: "Stable", symbol: "■", tone: "neutral" },
+    falling: { label: "Falling", symbol: "▼", tone: "danger" },
+    new_observation: { label: "No comparison yet", symbol: "○", tone: "warning" },
+    unavailable: { label: "Not available", symbol: "-", tone: "neutral" },
   };
   const item = map[status];
-  return <Badge tone={item.tone}>{item.label}{change !== null && change !== undefined ? ` ${change > 0 ? "+" : ""}${change}%` : ""}</Badge>;
+  return (
+    <Badge tone={item.tone}>
+      <span className="font-mono text-[9px] font-bold opacity-80">{item.symbol}</span>
+      <span>{item.label}{change !== null && change !== undefined ? ` ${change > 0 ? "+" : ""}${change}%` : ""}</span>
+    </Badge>
+  );
 }

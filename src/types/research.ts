@@ -261,7 +261,7 @@ export interface TrendSnapshot {
 export interface SavedProject {
   id: string;
   name: string;
-  type: "research" | "extraction" | "trend" | "competitor" | "hashtag";
+  type: "research" | "extraction" | "trend" | "competitor" | "hashtag" | "transcript";
   createdAt: string;
   updatedAt: string;
   notes: string;

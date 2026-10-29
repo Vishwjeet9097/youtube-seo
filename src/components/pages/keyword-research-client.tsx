@@ -39,10 +39,35 @@ export function KeywordResearchClient() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
   const defaultsApplied = useRef(false);
+  const autoSubmittedRef = useRef(false);
+
+  const run = async (overrideQuery?: string) => {
+    const targetQuery = (overrideQuery ?? query).trim();
+    if (targetQuery.length < 2) { setError("Enter a topic with at least two characters."); return; }
+    setLoading(true); setError(null);
+    try {
+      const publishedAfter = dateRange === "any" ? undefined : new Date(Date.now() - Number(dateRange) * 86_400_000).toISOString();
+      const response = await postApi<ResearchResult>("/api/research", {
+        query: targetQuery, region, language, maxResults, includeSuggestions,
+        includeGeneratedCandidates: experimental, ...(publishedAfter ? { publishedAfter } : {}),
+      });
+      setResult(response.data);
+      const total = response.data.suggestions.length + response.data.titleKeywords.length + response.data.tags.length + response.data.hashtags.length;
+      updateWorkspace((state) => ({ ...state, activities: [createActivity("research", targetQuery, total), ...state.activities] }));
+    } catch (caught) { setError(caught instanceof Error ? caught.message : "We couldn’t research this topic. Try again."); }
+    finally { setLoading(false); }
+  };
 
   useEffect(() => {
     const value = new URLSearchParams(window.location.search).get("query");
-    if (value) setQuery(value);
+    if (value) {
+      setQuery(value);
+      if (!autoSubmittedRef.current && value.trim().length >= 2) {
+        autoSubmittedRef.current = true;
+        void run(value);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   useEffect(() => {
     if (!workspace.hydrated || defaultsApplied.current) return;
@@ -69,21 +94,7 @@ export function KeywordResearchClient() {
   const rows = useMemo(() => result ? rowsForCategory(result, category) : [], [result, category]);
   const variations = useMemo(() => result ? findObservedVariations(result.query, result.videos) : new Map<string, string[]>(), [result]);
 
-  const run = async () => {
-    if (query.trim().length < 2) { setError("Enter a topic with at least two characters."); return; }
-    setLoading(true); setError(null);
-    try {
-      const publishedAfter = dateRange === "any" ? undefined : new Date(Date.now() - Number(dateRange) * 86_400_000).toISOString();
-      const response = await postApi<ResearchResult>("/api/research", {
-        query: query.trim(), region, language, maxResults, includeSuggestions,
-        includeGeneratedCandidates: experimental, ...(publishedAfter ? { publishedAfter } : {}),
-      });
-      setResult(response.data);
-      const total = response.data.suggestions.length + response.data.titleKeywords.length + response.data.tags.length + response.data.hashtags.length;
-      updateWorkspace((state) => ({ ...state, activities: [createActivity("research", query.trim(), total), ...state.activities] }));
-    } catch (caught) { setError(caught instanceof Error ? caught.message : "We couldn’t research this topic. Try again."); }
-    finally { setLoading(false); }
-  };
+
 
   const save = () => {
     if (!result) return;
@@ -278,7 +289,7 @@ export function KeywordResearchClient() {
                           href={link}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-xs font-semibold text-brand hover:underline"
+                          className="inline-flex items-center gap-1.5 rounded-full bg-brand-soft px-3 py-1 text-xs font-semibold text-brand-strong hover:bg-brand hover:text-white transition-all duration-150 no-underline shadow-2xs active:scale-95"
                         >
                           Video {index + 1}
                           <ExternalLink className="size-3" />
@@ -355,7 +366,18 @@ function descriptionForCategory(category: Category): string {
   }; return descriptions[category];
 }
 function emptyForCategory(category: Category): string { return category === "provider" ? "No keyword source is connected. Missing values remain Not available, not zero." : category === "related" ? "No supported source returned related queries. Try another topic." : category === "suggestions" ? "YouTube autocomplete is off or returned no suggestions. Turn it on or try another topic." : category === "generated" ? "No generated variants were created. Try another topic." : "No results appeared in this category. Try a broader topic or date range."; }
-function Metric({ label, value, detail }: { label: string; value: number; detail: string }) { return <div className="metric-card"><p className="text-[11px] font-bold uppercase tracking-[0.08em] text-muted">{label}</p><p className="mt-3 text-[28px] font-bold leading-none tracking-[-0.04em] tabular-nums">{value}</p><p className="mt-2 text-[11px] leading-5 text-muted">{detail}</p></div>; }
+function Metric({ label, value, detail }: { label: string; value: number; detail: string }) {
+  return (
+    <div className="metric-card">
+      <div className="flex items-center justify-between">
+        <p className="font-mono text-[11px] font-bold uppercase tracking-[0.1em] text-muted">{label}</p>
+        <span className="font-mono text-[9px] font-bold text-muted/60">METRIC</span>
+      </div>
+      <p className="mt-2 text-[30px] font-extrabold leading-none tracking-[-0.04em] tabular-nums font-mono text-foreground">{value}</p>
+      <p className="mt-2 text-[11px] leading-5 text-muted">{detail}</p>
+    </div>
+  );
+}
 function isResearchResult(value: unknown): value is ResearchResult { return Boolean(value && typeof value === "object" && "query" in value && "videos" in value && "tags" in value); }
 
 function rangePreset(publishedAfter: string | null, retrievedAt: string): string {

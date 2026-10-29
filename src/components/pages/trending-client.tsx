@@ -36,8 +36,46 @@ export function TrendingClient() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
   const defaultsApplied = useRef(false);
+  const autoSubmittedRef = useRef(false);
 
-  useEffect(() => { const value = new URLSearchParams(window.location.search).get("query"); if (value) setQuery(value); }, []);
+  const run = async (overrideQuery?: string) => {
+    const targetQuery = overrideQuery !== undefined ? overrideQuery : query;
+    if (timeframe === "custom" && (!customStart || !customEnd)) { setError("Choose a start date and an end date."); return; }
+    setLoading(true); setError(null);
+    try {
+      const customPayload = timeframe === "custom" ? {
+        customStart: new Date(`${customStart}T00:00:00.000Z`).toISOString(),
+        customEnd: new Date(Math.min(Date.now(), new Date(`${customEnd}T23:59:59.999Z`).getTime())).toISOString(),
+      } : {};
+      const response = await postApi<TrendResult>("/api/trending", {
+        query: targetQuery.trim() || undefined, region, language, timeframe, ...customPayload,
+        categoryId: categoryId || undefined, order, contentType, maxResults: 50,
+      });
+      const compared = withHistory(response.data, workspace.state.trendSnapshots);
+      setResult(compared);
+      const snapshot = createTrendSnapshot(response.data);
+      updateWorkspace((state) => ({
+        ...state,
+        activities: [createActivity("trend", targetQuery.trim() || `Current regional popular-video chart · ${region}`, response.data.sampleSize), ...state.activities],
+        trendSnapshots: state.trendSnapshots.some((item) => item.fingerprint === snapshot.fingerprint && item.result.retrievedAt === snapshot.result.retrievedAt)
+          ? state.trendSnapshots
+          : [snapshot, ...state.trendSnapshots],
+      }));
+    } catch (caught) { setError(caught instanceof Error ? caught.message : "We couldn’t load short-term trends. Try again."); }
+    finally { setLoading(false); }
+  };
+
+  useEffect(() => {
+    const value = new URLSearchParams(window.location.search).get("query");
+    if (value) {
+      setQuery(value);
+      if (!autoSubmittedRef.current && value.trim()) {
+        autoSubmittedRef.current = true;
+        void run(value);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   useEffect(() => {
     if (!workspace.hydrated || defaultsApplied.current) return;
     defaultsApplied.current = true;
@@ -57,31 +95,7 @@ export function TrendingClient() {
   const currentRows = useMemo<TermAggregate[]>(() => result ? result[termTab] : [], [result, termTab]);
   const viewValues = result?.videos.map((video) => video.statistics.viewCount).filter((value): value is number => value !== null) ?? [];
 
-  const run = async () => {
-    if (timeframe === "custom" && (!customStart || !customEnd)) { setError("Choose a start date and an end date."); return; }
-    setLoading(true); setError(null);
-    try {
-      const customPayload = timeframe === "custom" ? {
-        customStart: new Date(`${customStart}T00:00:00.000Z`).toISOString(),
-        customEnd: new Date(Math.min(Date.now(), new Date(`${customEnd}T23:59:59.999Z`).getTime())).toISOString(),
-      } : {};
-      const response = await postApi<TrendResult>("/api/trending", {
-        query: query.trim() || undefined, region, language, timeframe, ...customPayload,
-        categoryId: categoryId || undefined, order, contentType, maxResults: 50,
-      });
-      const compared = withHistory(response.data, workspace.state.trendSnapshots);
-      setResult(compared);
-      const snapshot = createTrendSnapshot(response.data);
-      updateWorkspace((state) => ({
-        ...state,
-        activities: [createActivity("trend", query.trim() || `Current regional popular-video chart · ${region}`, response.data.sampleSize), ...state.activities],
-        trendSnapshots: state.trendSnapshots.some((item) => item.fingerprint === snapshot.fingerprint && item.result.retrievedAt === snapshot.result.retrievedAt)
-          ? state.trendSnapshots
-          : [snapshot, ...state.trendSnapshots],
-      }));
-    } catch (caught) { setError(caught instanceof Error ? caught.message : "We couldn’t load short-term trends. Try again."); }
-    finally { setLoading(false); }
-  };
+
 
   const save = () => {
     if (!result) return;
@@ -331,5 +345,13 @@ function withHistory(result: TrendResult, snapshots: ReturnType<typeof useWorksp
     titlePhrases: applyHistoricalComparison(result.titlePhrases, fingerprint, snapshots, "titlePhrases", result.retrievedAt, result.videos),
   };
 }
-function Metric({ label, value, detail }: { label: string; value: string; detail: string }) { return <div className="metric-card"><p className="text-[11px] font-bold uppercase tracking-[0.08em] text-muted">{label}</p><p className="mt-3 truncate text-xl font-bold leading-none tracking-[-0.035em] tabular-nums" title={value}>{value}</p><p className="mt-2 text-[11px] leading-5 text-muted">{detail}</p></div>; }
+function Metric({ label, value, detail }: { label: string; value: string; detail: string }) {
+  return (
+    <div className="metric-card">
+      <p className="font-mono text-[11px] font-bold uppercase tracking-[0.1em] text-muted">{label}</p>
+      <p className="mt-2.5 truncate font-mono text-2xl font-extrabold leading-none tracking-[-0.03em] tabular-nums text-foreground" title={value}>{value}</p>
+      <p className="mt-2 text-[11px] leading-5 text-muted">{detail}</p>
+    </div>
+  );
+}
 function isTrendResult(value: unknown): value is TrendResult { return Boolean(value && typeof value === "object" && "timeframe" in value && "windowStart" in value && "tags" in value); }

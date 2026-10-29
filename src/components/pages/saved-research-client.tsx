@@ -11,13 +11,21 @@ import { exportWorkspaceJson, importWorkspaceJson } from "@/lib/storage";
 import { replaceWorkspace, resetWorkspace, updateWorkspace, useWorkspace } from "@/hooks/use-workspace";
 import type { SavedProject } from "@/types/research";
 
-const routes: Record<SavedProject["type"], string> = { research: "/keywords", extraction: "/extract", trend: "/trending", competitor: "/competitors", hashtag: "/hashtags" };
+const routes: Record<SavedProject["type"], string> = {
+  research: "/keywords",
+  extraction: "/extract",
+  trend: "/trending",
+  competitor: "/competitors",
+  hashtag: "/hashtags",
+  transcript: "/transcript",
+};
 const typeLabels: Record<SavedProject["type"], string> = {
   research: "Topic research",
   extraction: "Tag extractor",
   trend: "Keyword trends",
   competitor: "Compare tags",
   hashtag: "Hashtag research",
+  transcript: "Transcripts & summaries",
 };
 
 export function SavedResearchClient() {

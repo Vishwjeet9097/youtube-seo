@@ -16,16 +16,28 @@ export function PublicationChart({ videos }: { videos: readonly VideoRecord[] })
     return [...buckets].sort(([left], [right]) => left.localeCompare(right)).map(([date, count]) => ({ date: date.slice(5), videos: count }));
   }, [videos]);
 
-  if (!data.length) return <div className="grid h-64 place-items-center text-sm text-muted">No publish dates are available.</div>;
+  if (!data.length) return <div className="grid h-64 place-items-center font-mono text-sm text-muted">No publish dates are available.</div>;
   return (
     <div className="h-64 w-full" role="img" aria-label="Videos in sample by UTC publish date">
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={data} margin={{ top: 10, right: 8, left: -20, bottom: 0 }}>
-          <CartesianGrid stroke="var(--border)" strokeDasharray="3 5" vertical={false} />
-          <XAxis dataKey="date" tick={{ fill: "var(--muted)", fontSize: 11, fontWeight: 600 }} axisLine={{ stroke: "var(--border)" }} tickLine={false} />
-          <YAxis allowDecimals={false} tick={{ fill: "var(--muted)", fontSize: 11, fontWeight: 600 }} axisLine={false} tickLine={false} />
-          <Tooltip cursor={{ fill: "var(--brand-soft)", opacity: 0.52 }} contentStyle={{ background: "var(--surface-raised)", border: "1px solid var(--border)", borderRadius: 12, boxShadow: "var(--shadow-md)", color: "var(--foreground)", fontSize: 12 }} />
-          <Bar dataKey="videos" name="Videos in sample" fill="var(--brand-bright)" radius={[7, 7, 2, 2]} maxBarSize={36} />
+          <CartesianGrid stroke="var(--border)" strokeDasharray="3 4" vertical={false} opacity={0.6} />
+          <XAxis dataKey="date" tick={{ fill: "var(--muted)", fontSize: 10, fontFamily: "var(--font-mono)", fontWeight: 700 }} axisLine={{ stroke: "var(--border)" }} tickLine={false} />
+          <YAxis allowDecimals={false} tick={{ fill: "var(--muted)", fontSize: 10, fontFamily: "var(--font-mono)", fontWeight: 700 }} axisLine={false} tickLine={false} />
+          <Tooltip
+            cursor={{ fill: "var(--brand-soft)", opacity: 0.6 }}
+            contentStyle={{
+              background: "var(--surface-raised)",
+              border: "1px solid var(--border)",
+              borderRadius: 12,
+              boxShadow: "var(--shadow-md), 0 0 16px rgba(6,182,212,0.15)",
+              color: "var(--foreground)",
+              fontFamily: "var(--font-mono)",
+              fontSize: 12,
+              fontWeight: 600,
+            }}
+          />
+          <Bar dataKey="videos" name="Videos in sample" fill="var(--brand)" radius={[6, 6, 1, 1]} maxBarSize={32} />
         </BarChart>
       </ResponsiveContainer>
     </div>

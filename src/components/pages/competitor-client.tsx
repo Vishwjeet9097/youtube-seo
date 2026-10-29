@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Clipboard, Download, Save, UsersRound } from "lucide-react";
 import { Field, Input, Select, Textarea } from "@/components/shared/form-fields";
 import { TagChips } from "@/components/shared/tag-chips";
@@ -22,9 +22,34 @@ export function CompetitorClient() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
+  const autoSubmittedRef = useRef(false);
   const lines = useMemo(() => inputs.split(/\r?\n/u).map((line) => line.trim()).filter(Boolean), [inputs]);
 
-  useEffect(() => { const value = new URLSearchParams(window.location.search).get("input"); if (value) setInputs(value); }, []);
+  const run = async (overrideInputs?: string[]) => {
+    const targetLines = overrideInputs ?? lines;
+    if (targetLines.length < 2) { setError("Add at least two YouTube video or channel links, handles, or IDs."); return; }
+    if (targetLines.length > 20) { setError("Add no more than 20 items to a comparison."); return; }
+    setLoading(true); setError(null);
+    try {
+      const response = await postApi<CompetitorComparison>("/api/competitors", { inputs: targetLines, referenceIndex, channelLimit });
+      setResult(response.data);
+      updateWorkspace((state) => ({ ...state, activities: [createActivity("competitor", `${targetLines.length} items compared`, response.data.sampleSize), ...state.activities], comparisonHistory: [response.data, ...state.comparisonHistory] }));
+    } catch (caught) { setError(caught instanceof Error ? caught.message : "Couldn’t compare these tags. Check the inputs and try again."); }
+    finally { setLoading(false); }
+  };
+
+  useEffect(() => {
+    const value = new URLSearchParams(window.location.search).get("input");
+    if (value) {
+      setInputs(value);
+      const parsedLines = value.split(/\r?\n/u).map((line) => line.trim()).filter(Boolean);
+      if (!autoSubmittedRef.current && parsedLines.length >= 2) {
+        autoSubmittedRef.current = true;
+        void run(parsedLines);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   useEffect(() => {
     if (!workspace.hydrated) return;
     const id = new URLSearchParams(window.location.search).get("project");
@@ -38,17 +63,7 @@ export function CompetitorClient() {
   }, [workspace.hydrated, workspace.state.projects]);
   useEffect(() => { if (referenceIndex >= lines.length) setReferenceIndex(0); }, [lines.length, referenceIndex]);
 
-  const run = async () => {
-    if (lines.length < 2) { setError("Add at least two YouTube video or channel links, handles, or IDs."); return; }
-    if (lines.length > 20) { setError("Add no more than 20 items to a comparison."); return; }
-    setLoading(true); setError(null);
-    try {
-      const response = await postApi<CompetitorComparison>("/api/competitors", { inputs: lines, referenceIndex, channelLimit });
-      setResult(response.data);
-      updateWorkspace((state) => ({ ...state, activities: [createActivity("competitor", `${lines.length} items compared`, response.data.sampleSize), ...state.activities], comparisonHistory: [response.data, ...state.comparisonHistory] }));
-    } catch (caught) { setError(caught instanceof Error ? caught.message : "Couldn’t compare these tags. Check the inputs and try again."); }
-    finally { setLoading(false); }
-  };
+
 
   const flash = (message: string) => { setNotice(message); window.setTimeout(() => setNotice(""), 1800); };
   const save = () => {

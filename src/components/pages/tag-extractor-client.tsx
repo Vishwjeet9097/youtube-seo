@@ -25,10 +25,43 @@ export function TagExtractorClient() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
   const defaultsApplied = useRef(false);
+  const autoSubmittedRef = useRef(false);
+
+  const run = async (overrideLines?: string[], isRetry?: boolean) => {
+    const lines = overrideLines ?? inputs.split(/\r?\n/u).map((value) => value.trim()).filter(Boolean);
+    if (!lines.length) { setError("Add at least one YouTube video or channel link, handle, or ID."); return; }
+    if (lines.length > 20) { setError("Add no more than 20 items at a time."); return; }
+    setLoading(true); setError(null); setStage(`Getting tags for ${lines.length} item${lines.length === 1 ? "" : "s"}…`);
+    try {
+      const response = await postApi<ExtractionItem[]>("/api/extract", { inputs: lines, channelLimit });
+      if (isRetry) {
+        setResults((current) => {
+          const retried = new Map(response.data.map((item) => [item.input, item]));
+          return current.map((item) => retried.get(item.input) ?? item);
+        });
+      } else {
+        setResults(response.data);
+        const count = response.data.reduce((sum, item) => sum + item.videos.length, 0);
+        updateWorkspace((state) => ({ ...state, activities: [createActivity("extraction", lines.length === 1 ? lines[0]! : `${lines.length} items checked`, count), ...state.activities] }));
+      }
+      setStage("Tags ready");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Couldn’t get tags from YouTube. Try again.");
+      setStage("");
+    } finally { setLoading(false); }
+  };
 
   useEffect(() => {
     const value = new URLSearchParams(window.location.search).get("input");
-    if (value) setInputs(value);
+    if (value) {
+      setInputs(value);
+      const parsedLines = value.split(/\r?\n/u).map((l) => l.trim()).filter(Boolean);
+      if (!autoSubmittedRef.current && parsedLines.length > 0) {
+        autoSubmittedRef.current = true;
+        void run(parsedLines);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   useEffect(() => {
     if (!workspace.hydrated || defaultsApplied.current) return;
@@ -49,29 +82,7 @@ export function TagExtractorClient() {
   const comparison = useMemo(() => compareTags(videos), [videos]);
   const issues = results.filter((item) => item.status !== "complete" || item.error);
 
-  const run = async (onlyInputs?: string[]) => {
-    const lines = onlyInputs ?? inputs.split(/\r?\n/u).map((value) => value.trim()).filter(Boolean);
-    if (!lines.length) { setError("Add at least one YouTube video or channel link, handle, or ID."); return; }
-    if (lines.length > 20) { setError("Add no more than 20 items at a time."); return; }
-    setLoading(true); setError(null); setStage(`Getting tags for ${lines.length} item${lines.length === 1 ? "" : "s"}…`);
-    try {
-      const response = await postApi<ExtractionItem[]>("/api/extract", { inputs: lines, channelLimit });
-      if (onlyInputs) {
-        setResults((current) => {
-          const retried = new Map(response.data.map((item) => [item.input, item]));
-          return current.map((item) => retried.get(item.input) ?? item);
-        });
-      } else {
-        setResults(response.data);
-        const count = response.data.reduce((sum, item) => sum + item.videos.length, 0);
-        updateWorkspace((state) => ({ ...state, activities: [createActivity("extraction", lines.length === 1 ? lines[0]! : `${lines.length} items checked`, count), ...state.activities] }));
-      }
-      setStage("Tags ready");
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Couldn’t get tags from YouTube. Try again.");
-      setStage("");
-    } finally { setLoading(false); }
-  };
+
 
   const flash = (message: string) => { setNotice(message); window.setTimeout(() => setNotice(""), 1800); };
   const allTags = dedupePreservingOriginal(videos.flatMap((video) => video.tags ?? []));
@@ -234,7 +245,7 @@ export function TagExtractorClient() {
                       {item.input}: {item.error?.message ?? "Some results were unavailable for this item."}
                     </span>
                     {item.error?.retryable ? (
-                      <Button size="small" variant="secondary" onClick={() => run([item.input])}>
+                      <Button size="small" variant="secondary" onClick={() => run([item.input], true)}>
                         <RefreshCw className="size-3" />
                         Retry
                       </Button>
@@ -311,7 +322,25 @@ export function TagExtractorClient() {
   );
 }
 
-function Summary({ label, value }: { label: string; value: number }) { return <div className="metric-card"><p className="text-[11px] font-bold uppercase tracking-[0.08em] text-muted">{label}</p><p className="mt-3 text-[28px] font-bold leading-none tracking-[-0.04em] tabular-nums">{value}</p></div>; }
+function Summary({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="metric-card">
+      <div className="flex items-center justify-between">
+        <p className="font-mono text-[11px] font-bold uppercase tracking-[0.1em] text-muted">{label}</p>
+        <span className="font-mono text-[9px] font-bold text-muted/60">NODE</span>
+      </div>
+      <p className="mt-2 text-[30px] font-extrabold leading-none tracking-[-0.04em] tabular-nums font-mono text-foreground">{value}</p>
+      <div className="mt-3 flex items-center gap-1.5 pt-2 border-t border-border/50">
+        <div className="h-1 flex-1 overflow-hidden rounded-full bg-surface-muted border border-border/40">
+          <div
+            className="h-full rounded-full bg-gradient-to-r from-brand to-brand-bright"
+            style={{ width: value > 0 ? `${Math.min(100, Math.max(20, value * 6))}%` : "15%" }}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function compareTags(videos: readonly VideoRecord[]) {
   const maps = videos.map((video) => new Map((video.tags ?? []).map((tag) => [normalizeForMatch(tag), tag])));

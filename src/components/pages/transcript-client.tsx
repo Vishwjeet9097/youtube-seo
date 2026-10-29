@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import {
+  ArrowRight,
   Check,
   CheckCircle2,
   Clock,
@@ -29,6 +30,8 @@ import {
   stripTimestampMarkers,
 } from "@/lib/services/transcript";
 import { tagCharacterUsage } from "@/lib/text";
+import { createActivity } from "@/lib/storage";
+import { updateWorkspace } from "@/hooks/use-workspace";
 import type {
   SummaryPayload,
   TranscriptPayload,
@@ -98,17 +101,6 @@ export function TranscriptClient() {
     };
   }, []);
 
-  // Read URL query params on load
-  useEffect(() => {
-    const query =
-      new URLSearchParams(window.location.search).get("url") ??
-      new URLSearchParams(window.location.search).get("v") ??
-      new URLSearchParams(window.location.search).get("input");
-    if (query) {
-      setUrlInput(query);
-    }
-  }, []);
-
   const flash = (message: string) => {
     setNotice(message);
     window.setTimeout(() => setNotice(null), 2500);
@@ -176,9 +168,11 @@ export function TranscriptClient() {
     }
   }, []);
 
+  const autoSubmittedRef = useRef(false);
+
   // Fetch Transcript handler
-  const handleFetchTranscript = async () => {
-    const raw = urlInput.trim();
+  const handleFetchTranscript = async (overrideUrl?: string) => {
+    const raw = (overrideUrl ?? urlInput).trim();
     if (!raw) {
       setError("Please paste a valid YouTube video URL or 11-character video ID.");
       return;
@@ -218,6 +212,17 @@ export function TranscriptClient() {
 
       const data = response.data;
       setTranscriptData(data);
+      updateWorkspace((state) => ({
+        ...state,
+        activities: [
+          createActivity(
+            "transcript",
+            data.videoMetadata.title || raw,
+            data.segments.length,
+          ),
+          ...state.activities,
+        ],
+      }));
 
       if (data.isTranslated) {
         setTranslatedData({
@@ -247,6 +252,22 @@ export function TranscriptClient() {
       }
     }
   };
+
+  // Read URL query params on load and auto-submit
+  useEffect(() => {
+    const query =
+      new URLSearchParams(window.location.search).get("url") ??
+      new URLSearchParams(window.location.search).get("v") ??
+      new URLSearchParams(window.location.search).get("input");
+    if (query) {
+      setUrlInput(query);
+      if (!autoSubmittedRef.current && query.trim()) {
+        autoSubmittedRef.current = true;
+        void handleFetchTranscript(query);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Translation handler for changing language
   const handleLanguageChange = async (targetLang: string) => {
@@ -722,7 +743,7 @@ export function TranscriptClient() {
                       href={metadata.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-1 font-semibold text-brand hover:underline"
+                      className="inline-flex items-center gap-1.5 rounded-full bg-brand-soft px-3 py-1 text-xs font-semibold text-brand-strong hover:bg-brand hover:text-white transition-all duration-150 no-underline shadow-2xs"
                     >
                       <span>Watch on YouTube</span>
                       <ExternalLink className="size-3" aria-hidden="true" />
@@ -734,27 +755,33 @@ export function TranscriptClient() {
 
             {/* Quick Stats Card */}
             <Panel className="p-4 sm:p-5 min-w-0">
-              <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-subtle">
-                Transcript Metrics
-              </p>
+              <div className="flex items-center justify-between">
+                <p className="font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-subtle">
+                  {"// TRANSCRIPT TELEMETRY"}
+                </p>
+                <span className="font-mono text-[9px] font-bold text-muted/70 flex items-center gap-1">
+                  <span className="size-1.5 rounded-full bg-success animate-pulse" />
+                  SYNCED
+                </span>
+              </div>
               <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-                <div className="rounded-xl border bg-surface-muted/60 p-2.5 min-w-0">
-                  <p className="text-lg font-bold text-foreground tabular-nums">
+                <div className="rounded-xl border border-border/70 bg-surface-muted/70 p-2.5 min-w-0 transition hover:border-brand/30">
+                  <p className="text-lg font-extrabold text-foreground tabular-nums font-mono">
                     {currentSegments.length}
                   </p>
-                  <p className="text-[10px] text-muted">Segments</p>
+                  <p className="font-mono text-[10px] text-muted uppercase">Segments</p>
                 </div>
-                <div className="rounded-xl border bg-surface-muted/60 p-2.5 min-w-0">
-                  <p className="text-lg font-bold text-foreground tabular-nums">
+                <div className="rounded-xl border border-border/70 bg-surface-muted/70 p-2.5 min-w-0 transition hover:border-brand/30">
+                  <p className="text-lg font-extrabold text-foreground tabular-nums font-mono">
                     {transcriptData.wordCount.toLocaleString()}
                   </p>
-                  <p className="text-[10px] text-muted">Words</p>
+                  <p className="font-mono text-[10px] text-muted uppercase">Words</p>
                 </div>
-                <div className="rounded-xl border bg-surface-muted/60 p-2.5 min-w-0">
-                  <p className="text-lg font-bold text-foreground tabular-nums">
+                <div className="rounded-xl border border-border/70 bg-surface-muted/70 p-2.5 min-w-0 transition hover:border-brand/30">
+                  <p className="text-lg font-extrabold text-foreground tabular-nums font-mono">
                     {transcriptData.charCount.toLocaleString()}
                   </p>
-                  <p className="text-[10px] text-muted">Characters</p>
+                  <p className="font-mono text-[10px] text-muted uppercase">Characters</p>
                 </div>
               </div>
             </Panel>
@@ -769,9 +796,10 @@ export function TranscriptClient() {
                   <button
                     type="button"
                     onClick={() => setActiveTab("tags")}
-                    className="text-xs font-bold text-brand hover:underline"
+                    className="inline-flex items-center gap-1.5 rounded-full bg-brand-soft px-3 py-1 text-xs font-bold text-brand-strong hover:bg-brand hover:text-white transition-all duration-150 no-underline shadow-2xs active:scale-95"
                   >
-                    View all →
+                    <span>View all</span>
+                    <ArrowRight className="size-3" />
                   </button>
                 ) : null}
               </div>
@@ -839,7 +867,7 @@ export function TranscriptClient() {
                     <button
                       type="button"
                       onClick={() => setActiveTab("tags")}
-                      className="inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-bold text-brand hover:underline"
+                      className="inline-flex items-center rounded-full bg-brand-soft px-2.5 py-1 text-[11px] font-bold text-brand-strong hover:bg-brand hover:text-white transition-all duration-150 no-underline shadow-2xs active:scale-95"
                     >
                       +{Math.max(0, activeTags.length - 4) + Math.max(0, activeHashtags.length - 3)} more
                     </button>
@@ -1085,7 +1113,7 @@ export function TranscriptClient() {
                       <button
                         type="button"
                         onClick={() => handleLanguageChange("original")}
-                        className="font-bold text-brand hover:underline shrink-0"
+                        className="rounded-full bg-brand-soft px-3 py-1 text-xs font-bold text-brand-strong hover:bg-brand hover:text-white transition-all duration-150 no-underline shrink-0 shadow-2xs active:scale-95"
                       >
                         Reset to Original
                       </button>
@@ -1100,7 +1128,7 @@ export function TranscriptClient() {
                         <button
                           type="button"
                           onClick={() => handleLanguageChange(selectedOutputLanguage)}
-                          className="font-bold underline hover:text-foreground shrink-0"
+                          className="rounded-full bg-danger px-3 py-1 text-xs font-bold text-white hover:bg-danger/90 transition-all duration-150 no-underline shrink-0 shadow-2xs active:scale-95"
                         >
                           Retry Translation
                         </button>
@@ -1259,19 +1287,23 @@ export function TranscriptClient() {
                           <div className="flex flex-wrap items-center gap-3 shrink-0">
                             {/* YouTube 500-character budget meter */}
                             <div
-                              className="flex items-center gap-2 rounded-lg bg-surface-muted/60 px-2.5 py-1 text-xs text-muted border border-border/50"
+                              className="flex items-center gap-2.5 rounded-xl bg-surface-muted/80 px-3 py-1.5 text-xs text-muted border border-border/60 shadow-xs"
                               title="YouTube Studio allows up to 500 characters of tags"
                             >
-                              <span className="text-[10px] font-bold uppercase tracking-wider text-subtle">Budget</span>
-                              <div className="w-16 sm:w-20 h-1.5 rounded-full bg-surface-muted overflow-hidden border border-border/40">
+                              <span className="font-mono text-[10px] font-extrabold uppercase tracking-wider text-subtle">BUDGET</span>
+                              <div className="w-18 sm:w-24 h-2 rounded-full bg-surface-muted overflow-hidden border border-border/60 p-0.5">
                                 <div
                                   className={`h-full rounded-full transition-all duration-300 ${
-                                    tagChars > 500 ? "bg-danger" : tagChars > 400 ? "bg-warning" : "bg-brand"
+                                    tagChars > 500
+                                      ? "bg-danger shadow-[0_0_10px_rgba(255,75,114,0.7)]"
+                                      : tagChars > 400
+                                        ? "bg-warning shadow-[0_0_10px_rgba(251,191,36,0.7)]"
+                                        : "bg-gradient-to-r from-brand to-brand-bright shadow-[0_0_10px_rgba(0,242,254,0.6)]"
                                   }`}
                                   style={{ width: `${Math.min(100, Math.round((tagChars / 500) * 100))}%` }}
                                 />
                               </div>
-                              <span className="tabular-nums font-mono text-[11px] font-semibold text-foreground">
+                              <span className="tabular-nums font-mono text-[11px] font-bold text-foreground">
                                 {tagChars}<span className="text-subtle font-normal">/500</span>
                               </span>
                             </div>
@@ -1279,7 +1311,7 @@ export function TranscriptClient() {
                             <button
                               type="button"
                               onClick={handleCopyKeywords}
-                              className="flex items-center gap-1 text-xs font-bold text-brand hover:underline"
+                              className="inline-flex items-center gap-1.5 rounded-full bg-brand-soft px-3 py-1 text-xs font-bold text-brand-strong hover:bg-brand hover:text-white transition-all duration-150 no-underline shadow-2xs active:scale-95"
                               title="Copy comma-separated list of keywords"
                             >
                               <Copy className="size-3" aria-hidden="true" />
@@ -1375,7 +1407,7 @@ export function TranscriptClient() {
                           <button
                             type="button"
                             onClick={handleCopyHashtags}
-                            className="flex items-center gap-1 text-xs font-bold text-brand hover:underline shrink-0"
+                            className="inline-flex items-center gap-1.5 rounded-full bg-brand-soft px-3 py-1 text-xs font-bold text-brand-strong hover:bg-brand hover:text-white transition-all duration-150 no-underline shadow-2xs active:scale-95 shrink-0"
                             title="Copy all hashtags space-separated"
                           >
                             <Copy className="size-3" aria-hidden="true" />
