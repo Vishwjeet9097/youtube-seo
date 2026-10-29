@@ -2,6 +2,7 @@ import { z } from "zod";
 import { AppError } from "@/lib/api/errors";
 import { formatDuration } from "@/lib/format";
 import { YouTubeDataProvider } from "@/lib/providers/youtube";
+import { extractHashtags } from "@/lib/text";
 import { isValidVideoId, parseYouTubeInput, youtubeVideoUrl } from "@/lib/youtube-url";
 import type { VideoMetadataDetails } from "@/types/research";
 
@@ -41,6 +42,10 @@ export async function fetchVideoMetadata(input: string): Promise<VideoMetadataDe
       const result = await provider.listVideos([videoId]);
       const item = result.data.find((v) => v.id === videoId);
       if (item) {
+        const hashtags = [
+          ...(item.hashtags?.title ?? []),
+          ...(item.hashtags?.description ?? []),
+        ];
         return {
           id: item.id,
           url: item.url,
@@ -53,6 +58,8 @@ export async function fetchVideoMetadata(input: string): Promise<VideoMetadataDe
           publishedAt: item.publishedAt,
           viewCount: item.statistics.viewCount,
           description: item.description || null,
+          tags: item.tags ?? [],
+          hashtags: Array.from(new Set(hashtags)),
         };
       }
     } catch {
@@ -102,10 +109,11 @@ export async function fetchVideoMetadata(input: string): Promise<VideoMetadataDe
     }
 
     const data = parsed.data;
+    const title = data.title;
     return {
       id: videoId,
       url: videoUrl,
-      title: data.title,
+      title,
       channelTitle: data.author_name,
       channelUrl: data.author_url ?? null,
       thumbnailUrl: data.thumbnail_url ?? `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
@@ -114,6 +122,8 @@ export async function fetchVideoMetadata(input: string): Promise<VideoMetadataDe
       publishedAt: null,
       viewCount: null,
       description: null,
+      tags: [],
+      hashtags: extractHashtags(title),
     };
   } catch (error) {
     if (error instanceof AppError) throw error;

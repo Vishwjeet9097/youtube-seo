@@ -315,6 +315,8 @@ export interface VideoMetadataDetails {
   publishedAt: string | null;
   viewCount: number | null;
   description: string | null;
+  tags?: string[];
+  hashtags?: string[];
 }
 
 export interface TranscriptSegmentItem {
@@ -360,6 +362,10 @@ export interface TranscriptPayload {
   translationStatus: "not_needed" | "completed" | "failed";
   isLanguageUncertain: boolean;
   availableCaptionTracks: CaptionTrackInfo[];
+
+  // Keywords (tags) and hashtags
+  tags?: string[];
+  hashtags?: string[];
 }
 
 export interface SummarySectionItem {

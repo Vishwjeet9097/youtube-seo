@@ -181,7 +181,12 @@ export async function discoverCaptionTracks(
   tracks: DiscoveredCaptionTrack[];
   defaultAudioLanguage?: string;
   title?: string;
+  keywords?: string[];
+  description?: string;
 }> {
+  let discoveredKeywords: string[] | undefined;
+  let discoveredDescription: string[] | string | undefined;
+
   // 1. Try InnerTube Player API first
   try {
     const resp = await customFetch(INNERTUBE_API_URL, {
@@ -205,10 +210,24 @@ export async function discoverCaptionTracks(
       const defaultAudioLanguage =
         typeof videoDetails?.defaultAudioLanguage === "string" ? videoDetails.defaultAudioLanguage : undefined;
       const title = typeof videoDetails?.title === "string" ? videoDetails.title : undefined;
+      const keywords = Array.isArray(videoDetails?.keywords)
+        ? (videoDetails.keywords.filter((k): k is string => typeof k === "string") as string[])
+        : undefined;
+      const description =
+        typeof videoDetails?.shortDescription === "string" ? videoDetails.shortDescription : undefined;
+
+      if (keywords && keywords.length > 0) discoveredKeywords = keywords;
+      if (description) discoveredDescription = description;
 
       const tracks = parseCaptionTracksList(rawTracks ?? []);
       if (tracks.length > 0) {
-        return { tracks, defaultAudioLanguage, title };
+        return {
+          tracks,
+          defaultAudioLanguage,
+          title,
+          keywords: discoveredKeywords,
+          description: typeof discoveredDescription === "string" ? discoveredDescription : undefined,
+        };
       }
     }
   } catch {
@@ -235,10 +254,31 @@ export async function discoverCaptionTracks(
         const defaultAudioLanguage =
           typeof videoDetails?.defaultAudioLanguage === "string" ? videoDetails.defaultAudioLanguage : undefined;
         const title = typeof videoDetails?.title === "string" ? videoDetails.title : undefined;
+        let keywords = Array.isArray(videoDetails?.keywords)
+          ? (videoDetails.keywords.filter((k): k is string => typeof k === "string") as string[])
+          : undefined;
+        const description =
+          typeof videoDetails?.shortDescription === "string" ? videoDetails.shortDescription : undefined;
+
+        if (!keywords || keywords.length === 0) {
+          const metaMatch = html.match(/<meta\s+name="keywords"\s+content="([^"]*)"/i);
+          if (metaMatch?.[1]) {
+            keywords = metaMatch[1].split(",").map((s) => s.trim()).filter(Boolean);
+          }
+        }
+
+        if (keywords && keywords.length > 0) discoveredKeywords = keywords;
+        if (description) discoveredDescription = description;
 
         const tracks = parseCaptionTracksList(rawTracks ?? []);
         if (tracks.length > 0) {
-          return { tracks, defaultAudioLanguage, title };
+          return {
+            tracks,
+            defaultAudioLanguage,
+            title,
+            keywords: discoveredKeywords,
+            description: typeof discoveredDescription === "string" ? discoveredDescription : undefined,
+          };
         }
       }
     }
@@ -246,7 +286,11 @@ export async function discoverCaptionTracks(
     // Fallback completed
   }
 
-  return { tracks: [] };
+  return {
+    tracks: [],
+    keywords: discoveredKeywords,
+    description: typeof discoveredDescription === "string" ? discoveredDescription : undefined,
+  };
 }
 
 /**

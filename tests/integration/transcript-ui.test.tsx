@@ -22,7 +22,11 @@ const mockTranscriptEnvelope = {
       publishedAt: null,
       viewCount: null,
       description: null,
+      tags: ["rick astley", "never gonna give you up", "pop", "80s music"],
+      hashtags: ["#rickastley", "#80smusic", "#pop"],
     },
+    tags: ["rick astley", "never gonna give you up", "pop", "80s music"],
+    hashtags: ["#rickastley", "#80smusic", "#pop"],
     sourceLanguage: "en",
     sourceLanguageName: "English",
     outputLanguage: "en",
@@ -332,5 +336,53 @@ describe("Transcript UI client flow", () => {
 
     expect(screen.queryByText("Rick Astley - Never Gonna Give You Up")).not.toBeInTheDocument();
     expect(input).toHaveValue("");
+  });
+
+  it("displays used keywords and hashtags with full copy options", async () => {
+    const user = userEvent.setup();
+    render(<TranscriptClient />);
+
+    const input = screen.getByLabelText("YouTube video URL or ID");
+    await user.type(input, "dQw4w9WgXcQ");
+    await user.click(screen.getByRole("button", { name: "Get Transcript" }));
+
+    expect(await screen.findByText("Rick Astley - Never Gonna Give You Up")).toBeInTheDocument();
+
+    // Verify sidebar quick stats card shows keywords and hashtags counts
+    expect(screen.getAllByText("Keywords & Hashtags").length).toBeGreaterThan(0);
+    expect(screen.getByText("Keywords")).toBeInTheDocument();
+    expect(screen.getByText("Hashtags")).toBeInTheDocument();
+
+    // Switch to Keywords & Hashtags tab
+    const tagsTab = screen.getByRole("tab", { name: /Keywords & Hashtags/i });
+    expect(tagsTab).toBeInTheDocument();
+    await user.click(tagsTab);
+
+    // Verify Tab Panel contents
+    expect(screen.getByText("Used Keywords / Tags")).toBeInTheDocument();
+    expect(screen.getByText("Used Hashtags")).toBeInTheDocument();
+
+    // Verify keywords chips are rendered in both sidebar preview and tab panel
+    expect(screen.getAllByText("rick astley").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("never gonna give you up").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("80s music").length).toBeGreaterThanOrEqual(1);
+
+    // Verify hashtags chips are rendered
+    expect(screen.getAllByText("#rickastley").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("#80smusic").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("#pop").length).toBeGreaterThanOrEqual(1);
+
+    // Verify copy buttons are rendered
+    expect(screen.getByRole("button", { name: /Copy Keywords \(4\)/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Copy Hashtags \(3\)/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Copy All$/i })).toBeInTheDocument();
+
+    // Click Copy Keywords button
+    await user.click(screen.getByRole("button", { name: /Copy Keywords \(4\)/i }));
+    expect(await screen.findByText(/Copied 4 keywords to clipboard!/i)).toBeInTheDocument();
+
+    // Click Copy Hashtags button
+    await user.click(screen.getByRole("button", { name: /Copy Hashtags \(3\)/i }));
+    expect(await screen.findByText(/Copied 3 hashtags to clipboard!/i)).toBeInTheDocument();
   });
 });

@@ -34,6 +34,7 @@ import {
   isSpeechToTextConfigured,
   transcribeWithSpeechToText,
 } from "@/lib/services/speech-to-text";
+import { dedupePreservingOriginal, extractHashtags } from "@/lib/text";
 import { transcriptDataCache } from "@/lib/services/transcript-cache";
 import type { CaptionTrackInfo, TranscriptPayload } from "@/types/research";
 
@@ -118,6 +119,27 @@ async function executeFetchVideoTranscript(
     const discovery = await discoverCaptionTracks(videoId, fetchFn);
     availableTracks = discovery.tracks;
     const defaultAudioLanguage = discovery.defaultAudioLanguage;
+
+    // Enrich video metadata with tags and hashtags from discovery
+    const finalTags =
+      metadata.tags && metadata.tags.length > 0
+        ? metadata.tags
+        : discovery.keywords ?? [];
+
+    const allHashtags = [
+      ...(metadata.hashtags ?? []),
+      ...extractHashtags(metadata.title || ""),
+      ...extractHashtags(discovery.title || ""),
+      ...extractHashtags(metadata.description || ""),
+      ...extractHashtags(discovery.description || ""),
+    ];
+    const finalHashtags = dedupePreservingOriginal(allHashtags);
+
+    metadata.tags = finalTags;
+    metadata.hashtags = finalHashtags;
+    if (!metadata.description && discovery.description) {
+      metadata.description = discovery.description;
+    }
 
     if (availableTracks.length > 0) {
       // Deterministically select the best caption track (prioritizing native Hindi over English translations)
@@ -209,6 +231,8 @@ async function executeFetchVideoTranscript(
             isLanguageUncertain: false,
             availableCaptionTracks: [],
             preferredTrackLang,
+            tags: metadata.tags ?? [],
+            hashtags: metadata.hashtags ?? [],
           });
         }
       } catch (sttErr) {
@@ -285,6 +309,8 @@ async function executeFetchVideoTranscript(
       isLanguageUncertain,
       availableCaptionTracks,
       preferredTrackLang,
+      tags: finalTags,
+      hashtags: finalHashtags,
     });
   } catch (error) {
     if (error instanceof AppError) throw error;
@@ -353,6 +379,8 @@ async function resolveOutputTranslation(params: {
   isLanguageUncertain: boolean;
   availableCaptionTracks: CaptionTrackInfo[];
   preferredTrackLang?: string;
+  tags?: string[];
+  hashtags?: string[];
 }): Promise<TranscriptPayload> {
   const {
     videoId,
@@ -370,7 +398,12 @@ async function resolveOutputTranslation(params: {
     isLanguageUncertain,
     availableCaptionTracks,
     preferredTrackLang,
+    tags,
+    hashtags,
   } = params;
+
+  const resolvedTags = tags ?? metadata.tags ?? [];
+  const resolvedHashtags = hashtags ?? metadata.hashtags ?? [];
 
   const cleanTarget = normalizeLanguageCode(targetOutputLang);
   const cleanSource = normalizeLanguageCode(sourceLanguage);
@@ -417,7 +450,13 @@ async function resolveOutputTranslation(params: {
 
   return {
     videoId,
-    videoMetadata: metadata,
+    videoMetadata: {
+      ...metadata,
+      tags: resolvedTags,
+      hashtags: resolvedHashtags,
+    },
+    tags: resolvedTags,
+    hashtags: resolvedHashtags,
     sourceLanguage,
     sourceLanguageName,
     outputLanguage,

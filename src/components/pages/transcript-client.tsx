@@ -8,11 +8,13 @@ import {
   Copy,
   ExternalLink,
   FileText,
+  Hash,
   Languages,
   Play,
   RotateCcw,
   Search,
   Sparkles,
+  Tag,
   Trash2,
   Video,
 } from "lucide-react";
@@ -26,6 +28,7 @@ import {
   serializeTranscript,
   stripTimestampMarkers,
 } from "@/lib/services/transcript";
+import { tagCharacterUsage } from "@/lib/text";
 import type {
   SummaryPayload,
   TranscriptPayload,
@@ -56,7 +59,7 @@ const LANGUAGE_OPTIONS: Array<[string, string]> = [
 
 export function TranscriptClient() {
   const [urlInput, setUrlInput] = useState("");
-  const [activeTab, setActiveTab] = useState<"transcript" | "summary">("transcript");
+  const [activeTab, setActiveTab] = useState<"transcript" | "summary" | "tags">("transcript");
 
   // Default timestamp setting must be OFF for clean transcript experience
   const [showTimestamps, setShowTimestamps] = useState(false);
@@ -81,6 +84,7 @@ export function TranscriptClient() {
   const [translatedData, setTranslatedData] = useState<TranslationPayload | null>(null);
   const [summaryData, setSummaryData] = useState<SummaryPayload | null>(null);
   const [summaryType, setSummaryType] = useState<"concise" | "detailed">("concise");
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const tabListId = useId();
@@ -139,6 +143,21 @@ export function TranscriptClient() {
     const q = searchFilter.toLowerCase();
     return cleanParagraphs.filter((p) => p.toLowerCase().includes(q));
   }, [cleanParagraphs, searchFilter]);
+
+  // Used keywords and hashtags from transcript payload or video metadata
+  const activeTags = useMemo(() => {
+    return transcriptData?.tags ?? transcriptData?.videoMetadata?.tags ?? [];
+  }, [transcriptData]);
+
+  const activeHashtags = useMemo(() => {
+    return transcriptData?.hashtags ?? transcriptData?.videoMetadata?.hashtags ?? [];
+  }, [transcriptData]);
+
+  const tagChars = useMemo(() => {
+    return tagCharacterUsage(activeTags);
+  }, [activeTags]);
+
+  const allTagsCount = activeTags.length + activeHashtags.length;
 
   // Video seeking in embed
   const seekVideo = useCallback((seconds: number) => {
@@ -400,6 +419,8 @@ export function TranscriptClient() {
     setSearchFilter("");
     setSelectedOutputLanguage("original");
     setSelectedTrackLanguage("auto");
+    setActiveTab("transcript");
+    setCopiedKey(null);
     setLoadingTranscript(false);
     setLoadingTranslation(false);
     setLoadingSummary(false);
@@ -418,6 +439,62 @@ export function TranscriptClient() {
           ? "Copied transcript with timestamps to clipboard!"
           : "Copied clean transcript (without timestamps) to clipboard!",
       );
+    } catch {
+      setError("Unable to copy to clipboard. Please copy manually.");
+    }
+  };
+
+  // Copy keywords (comma-separated, ideal for YouTube Studio tag manager)
+  const handleCopyKeywords = async () => {
+    if (!activeTags.length) return;
+    const text = activeTags.join(", ");
+    try {
+      await copyText(text);
+      flash(`Copied ${activeTags.length} keyword${activeTags.length === 1 ? "" : "s"} to clipboard!`);
+    } catch {
+      setError("Unable to copy keywords to clipboard. Please copy manually.");
+    }
+  };
+
+  // Copy hashtags (space-separated, ideal for YouTube video description)
+  const handleCopyHashtags = async () => {
+    if (!activeHashtags.length) return;
+    const text = activeHashtags.map((h) => (h.startsWith("#") ? h : `#${h}`)).join(" ");
+    try {
+      await copyText(text);
+      flash(`Copied ${activeHashtags.length} hashtag${activeHashtags.length === 1 ? "" : "s"} to clipboard!`);
+    } catch {
+      setError("Unable to copy hashtags to clipboard. Please copy manually.");
+    }
+  };
+
+  // Copy all keywords and hashtags together
+  const handleCopyAllMetadata = async () => {
+    if (!activeTags.length && !activeHashtags.length) return;
+    const parts: string[] = [];
+    if (activeTags.length > 0) {
+      parts.push(`KEYWORDS (${activeTags.length}):\n${activeTags.join(", ")}`);
+    }
+    if (activeHashtags.length > 0) {
+      parts.push(
+        `HASHTAGS (${activeHashtags.length}):\n${activeHashtags.map((h) => (h.startsWith("#") ? h : `#${h}`)).join(" ")}`,
+      );
+    }
+    try {
+      await copyText(parts.join("\n\n"));
+      flash("Copied all keywords & hashtags to clipboard!");
+    } catch {
+      setError("Unable to copy to clipboard. Please copy manually.");
+    }
+  };
+
+  // Copy single tag or hashtag with inline checkmark feedback
+  const handleCopySingleTag = async (tagText: string, key: string) => {
+    try {
+      await copyText(tagText);
+      setCopiedKey(key);
+      flash(`Copied "${tagText}" to clipboard!`);
+      window.setTimeout(() => setCopiedKey(null), 1500);
     } catch {
       setError("Unable to copy to clipboard. Please copy manually.");
     }
@@ -681,39 +758,152 @@ export function TranscriptClient() {
                 </div>
               </div>
             </Panel>
+
+            {/* Keywords & Hashtags Quick Summary Card */}
+            <Panel className="p-4 sm:p-5 min-w-0">
+              <div className="flex items-center justify-between">
+                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-subtle">
+                  Keywords & Hashtags
+                </p>
+                {activeTab !== "tags" ? (
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("tags")}
+                    className="text-xs font-bold text-brand hover:underline"
+                  >
+                    View all →
+                  </button>
+                ) : null}
+              </div>
+
+              <div className="mt-3 grid grid-cols-2 gap-2 text-center">
+                <div className="rounded-xl border bg-surface-muted/60 p-2.5 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold uppercase text-muted">Keywords</span>
+                    {activeTags.length > 0 ? (
+                      <button
+                        type="button"
+                        onClick={handleCopyKeywords}
+                        title="Copy keywords"
+                        className="text-muted hover:text-brand"
+                      >
+                        <Copy className="size-3" aria-hidden="true" />
+                      </button>
+                    ) : null}
+                  </div>
+                  <p className="mt-1 text-lg font-bold text-foreground tabular-nums">
+                    {activeTags.length}
+                  </p>
+                </div>
+
+                <div className="rounded-xl border bg-surface-muted/60 p-2.5 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold uppercase text-muted">Hashtags</span>
+                    {activeHashtags.length > 0 ? (
+                      <button
+                        type="button"
+                        onClick={handleCopyHashtags}
+                        title="Copy hashtags"
+                        className="text-muted hover:text-brand"
+                      >
+                        <Copy className="size-3" aria-hidden="true" />
+                      </button>
+                    ) : null}
+                  </div>
+                  <p className="mt-1 text-lg font-bold text-foreground tabular-nums">
+                    {activeHashtags.length}
+                  </p>
+                </div>
+              </div>
+
+              {/* Quick chips preview */}
+              {activeTags.length > 0 || activeHashtags.length > 0 ? (
+                <div className="mt-3 flex flex-wrap gap-1.5 pt-2 border-t">
+                  {activeTags.slice(0, 4).map((tag, idx) => (
+                    <span
+                      key={`prev-tag-${idx}`}
+                      className="inline-flex items-center rounded-md border bg-surface-muted/80 px-2 py-0.5 text-[11px] font-medium text-foreground truncate max-w-[140px]"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                  {activeHashtags.slice(0, 3).map((ht, idx) => (
+                    <span
+                      key={`prev-ht-${idx}`}
+                      className="inline-flex items-center rounded-md border border-brand/20 bg-brand-soft/50 px-2 py-0.5 text-[11px] font-semibold text-brand-strong truncate max-w-[140px]"
+                    >
+                      {ht.startsWith("#") ? ht : `#${ht}`}
+                    </span>
+                  ))}
+                  {activeTags.length > 4 || activeHashtags.length > 3 ? (
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab("tags")}
+                      className="inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-bold text-brand hover:underline"
+                    >
+                      +{Math.max(0, activeTags.length - 4) + Math.max(0, activeHashtags.length - 3)} more
+                    </button>
+                  ) : null}
+                </div>
+              ) : null}
+            </Panel>
           </div>
 
-          {/* Right Column: Interactive Tabs for Transcript & Summary (7 columns) */}
+          {/* Right Column: Interactive Tabs for Transcript, Summary, & Keywords (7 columns) */}
           <div className="lg:col-span-7 min-w-0">
             <Panel className="flex h-full min-h-[580px] flex-col overflow-hidden p-0 min-w-0">
               {/* Tab Navigation Pill Bar */}
               <div
                 role="tablist"
-                aria-label="Transcript and AI Summary options"
+                aria-label="Transcript, AI Summary, and Keywords options"
                 className="flex items-center border-b bg-surface-muted/60 p-2 min-w-0"
               >
                 <div className="flex w-full rounded-xl bg-surface-muted p-1 min-w-0">
+                  {/* TAB 1: TRANSCRIPT */}
                   <button
                     role="tab"
                     id={`${tabListId}-tab-transcript`}
                     aria-selected={activeTab === "transcript"}
                     aria-controls={`${tabListId}-panel-transcript`}
                     onClick={() => setActiveTab("transcript")}
-                    className={`flex flex-1 items-center justify-center gap-2 rounded-lg py-2 text-xs font-bold transition min-w-0 ${
+                    className={`flex flex-1 items-center justify-center gap-1.5 sm:gap-2 rounded-lg py-2 px-2.5 text-xs font-semibold transition-all min-w-0 ${
                       activeTab === "transcript"
-                        ? "bg-foreground text-background shadow-xs dark:bg-brand dark:text-background"
-                        : "text-muted hover:text-foreground"
+                        ? "bg-surface-raised text-foreground font-bold shadow-xs border border-border/50"
+                        : "text-muted hover:text-foreground hover:bg-surface-raised/40"
                     }`}
                   >
-                    <FileText className="size-4 shrink-0" aria-hidden="true" />
+                    <FileText className="size-3.5 sm:size-4 shrink-0" aria-hidden="true" />
                     <span className="truncate">Transcript</span>
                     {isCurrentlyTranslated ? (
-                      <span className="rounded-full bg-brand-soft px-2 py-0.5 text-[10px] font-bold text-brand-strong truncate max-w-[120px]">
+                      <span className="rounded-full bg-brand-soft px-1.5 py-0.5 text-[10px] font-bold text-brand-strong truncate max-w-[100px]">
                         {displayLanguageName}
                       </span>
                     ) : null}
                   </button>
 
+                  {/* TAB 2: KEYWORDS & HASHTAGS */}
+                  <button
+                    role="tab"
+                    id={`${tabListId}-tab-tags`}
+                    aria-selected={activeTab === "tags"}
+                    aria-controls={`${tabListId}-panel-tags`}
+                    onClick={() => setActiveTab("tags")}
+                    className={`flex flex-1 items-center justify-center gap-1.5 sm:gap-2 rounded-lg py-2 px-2.5 text-xs font-semibold transition-all min-w-0 ${
+                      activeTab === "tags"
+                        ? "bg-surface-raised text-foreground font-bold shadow-xs border border-border/50"
+                        : "text-muted hover:text-foreground hover:bg-surface-raised/40"
+                    }`}
+                  >
+                    <Tag className="size-3.5 sm:size-4 shrink-0" aria-hidden="true" />
+                    <span className="truncate">Keywords & Hashtags</span>
+                    {allTagsCount > 0 ? (
+                      <span className="rounded-full bg-brand-soft px-1.5 py-0.5 text-[10px] font-bold text-brand-strong">
+                        {allTagsCount}
+                      </span>
+                    ) : null}
+                  </button>
+
+                  {/* TAB 3: AI SUMMARIES */}
                   <button
                     role="tab"
                     id={`${tabListId}-tab-summary`}
@@ -725,16 +915,16 @@ export function TranscriptClient() {
                         handleGenerateSummary();
                       }
                     }}
-                    className={`flex flex-1 items-center justify-center gap-2 rounded-lg py-2 text-xs font-bold transition min-w-0 ${
+                    className={`flex flex-1 items-center justify-center gap-1.5 sm:gap-2 rounded-lg py-2 px-2.5 text-xs font-semibold transition-all min-w-0 ${
                       activeTab === "summary"
-                        ? "bg-foreground text-background shadow-xs dark:bg-brand dark:text-background"
-                        : "text-muted hover:text-foreground"
+                        ? "bg-surface-raised text-foreground font-bold shadow-xs border border-border/50"
+                        : "text-muted hover:text-foreground hover:bg-surface-raised/40"
                     }`}
                   >
-                    <Sparkles className="size-4 shrink-0" aria-hidden="true" />
+                    <Sparkles className="size-3.5 sm:size-4 shrink-0" aria-hidden="true" />
                     <span className="truncate">✦ AI Summaries</span>
                     {summaryData ? (
-                      <span className="rounded-full bg-success-soft px-2 py-0.5 text-[10px] font-bold text-success">
+                      <span className="rounded-full bg-success-soft px-1.5 py-0.5 text-[10px] font-bold text-success">
                         Ready
                       </span>
                     ) : null}
@@ -986,7 +1176,256 @@ export function TranscriptClient() {
                 </div>
               ) : null}
 
-              {/* TAB 2: AI SUMMARY */}
+              {/* TAB 2: KEYWORDS & HASHTAGS */}
+              {activeTab === "tags" ? (
+                <div
+                  role="tabpanel"
+                  id={`${tabListId}-panel-tags`}
+                  aria-labelledby={`${tabListId}-tab-tags`}
+                  className="flex flex-1 flex-col overflow-hidden min-w-0"
+                >
+                  {/* Action Toolbar */}
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b bg-surface-muted/30 p-3.5 sm:px-5 sm:py-3.5 min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="primary"
+                        onClick={handleCopyAllMetadata}
+                        disabled={!activeTags.length && !activeHashtags.length}
+                        title="Copy all keywords and hashtags formatted for YouTube"
+                        className="!h-9 !px-3.5 text-xs font-bold shrink-0"
+                      >
+                        <Copy className="size-3.5" aria-hidden="true" />
+                        <span>Copy All</span>
+                      </Button>
+
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={handleCopyKeywords}
+                        disabled={!activeTags.length}
+                        title="Copy all keywords (comma-separated, ready for YouTube Studio)"
+                        className="!h-9 !px-3 text-xs font-semibold shrink-0"
+                      >
+                        <Tag className="size-3.5 text-muted" aria-hidden="true" />
+                        <span>Copy Keywords ({activeTags.length})</span>
+                      </Button>
+
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={handleCopyHashtags}
+                        disabled={!activeHashtags.length}
+                        title="Copy all hashtags space-separated for video description"
+                        className="!h-9 !px-3 text-xs font-semibold shrink-0"
+                      >
+                        <Hash className="size-3.5 text-muted" aria-hidden="true" />
+                        <span>Copy Hashtags ({activeHashtags.length})</span>
+                      </Button>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 text-xs text-muted shrink-0">
+                      <span className="inline-block size-1.5 rounded-full bg-brand" aria-hidden="true" />
+                      <span>Click any badge to copy</span>
+                    </div>
+                  </div>
+
+                  {/* Content Area */}
+                  <div className="max-h-[580px] flex-1 space-y-5 overflow-y-auto p-4 sm:p-6 min-w-0">
+                    {/* CARD 1: KEYWORDS (TAGS) */}
+                    <div className="rounded-2xl border border-border/80 bg-surface-raised p-4 sm:p-5 shadow-xs transition hover:border-border min-w-0">
+                      {/* Card Header */}
+                      <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between pb-3.5 border-b border-border/60">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="grid size-8 shrink-0 place-items-center rounded-xl bg-brand-soft text-brand-strong">
+                            <Tag className="size-4" aria-hidden="true" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <h3 className="text-sm font-bold text-foreground">
+                                Used Keywords / Tags
+                              </h3>
+                              <Badge tone="brand" className="text-[10px]">
+                                {activeTags.length} {activeTags.length === 1 ? "tag" : "tags"}
+                              </Badge>
+                            </div>
+                            <p className="text-xs text-muted">
+                              Creator-specified tags for YouTube search indexing
+                            </p>
+                          </div>
+                        </div>
+
+                        {activeTags.length > 0 ? (
+                          <div className="flex flex-wrap items-center gap-3 shrink-0">
+                            {/* YouTube 500-character budget meter */}
+                            <div
+                              className="flex items-center gap-2 rounded-lg bg-surface-muted/60 px-2.5 py-1 text-xs text-muted border border-border/50"
+                              title="YouTube Studio allows up to 500 characters of tags"
+                            >
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-subtle">Budget</span>
+                              <div className="w-16 sm:w-20 h-1.5 rounded-full bg-surface-muted overflow-hidden border border-border/40">
+                                <div
+                                  className={`h-full rounded-full transition-all duration-300 ${
+                                    tagChars > 500 ? "bg-danger" : tagChars > 400 ? "bg-warning" : "bg-brand"
+                                  }`}
+                                  style={{ width: `${Math.min(100, Math.round((tagChars / 500) * 100))}%` }}
+                                />
+                              </div>
+                              <span className="tabular-nums font-mono text-[11px] font-semibold text-foreground">
+                                {tagChars}<span className="text-subtle font-normal">/500</span>
+                              </span>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={handleCopyKeywords}
+                              className="flex items-center gap-1 text-xs font-bold text-brand hover:underline"
+                              title="Copy comma-separated list of keywords"
+                            >
+                              <Copy className="size-3" aria-hidden="true" />
+                              <span>Copy keywords</span>
+                            </button>
+                          </div>
+                        ) : null}
+                      </div>
+
+                      {/* Card Body - Chips */}
+                      <div className="pt-4 min-w-0">
+                        {activeTags.length > 0 ? (
+                          <div className="flex flex-wrap gap-2">
+                            {activeTags.map((tag, idx) => (
+                              <button
+                                key={`tag-${tag}-${idx}`}
+                                type="button"
+                                onClick={() => handleCopySingleTag(tag, `tag-${idx}`)}
+                                title={`Click to copy "${tag}"`}
+                                className="group inline-flex items-center gap-1.5 rounded-xl border border-border-strong/70 bg-surface-muted/70 hover:bg-surface-raised hover:border-brand/40 hover:text-brand-strong px-3 py-1.5 text-xs font-medium text-foreground transition-all shadow-2xs hover:shadow-xs active:scale-[0.98]"
+                              >
+                                <span className="break-words">{tag}</span>
+                                {copiedKey === `tag-${idx}` ? (
+                                  <Check className="size-3 text-success shrink-0" aria-hidden="true" />
+                                ) : (
+                                  <Copy className="size-3 text-muted/60 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" aria-hidden="true" />
+                                )}
+                              </button>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="rounded-xl border border-dashed border-border/80 bg-surface-muted/30 p-6 text-center">
+                            <Tag className="mx-auto size-6 text-muted/60" aria-hidden="true" />
+                            <p className="mt-2 text-xs font-semibold text-foreground">
+                              No public tags found for this video
+                            </p>
+                            <p className="mt-1 text-[11px] text-muted">
+                              The creator did not specify tags for this video or YouTube has kept them hidden.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Quick Comma-Separated Box for YouTube Studio */}
+                      {activeTags.length > 0 ? (
+                        <details className="mt-4 group rounded-xl border border-border/60 bg-surface-muted/30 p-3 text-xs">
+                          <summary className="flex cursor-pointer items-center justify-between font-semibold text-muted hover:text-foreground list-none select-none">
+                            <span className="flex items-center gap-1.5">
+                              <FileText className="size-3.5 text-brand" aria-hidden="true" />
+                              <span>View comma-separated list (ready for YouTube Studio tag manager)</span>
+                            </span>
+                            <span className="text-[11px] text-brand font-bold group-open:rotate-180 transition-transform">
+                              ▼
+                            </span>
+                          </summary>
+                          <div className="mt-2.5 pt-2.5 border-t border-border/50">
+                            <textarea
+                              readOnly
+                              rows={2}
+                              value={activeTags.join(", ")}
+                              onClick={(e) => (e.target as HTMLTextAreaElement).select()}
+                              className="w-full rounded-lg border border-border/80 bg-surface-raised p-2 font-mono text-[11px] leading-relaxed text-foreground select-all focus:outline-none focus:ring-1 focus:ring-brand"
+                            />
+                          </div>
+                        </details>
+                      ) : null}
+                    </div>
+
+                    {/* CARD 2: HASHTAGS */}
+                    <div className="rounded-2xl border border-border/80 bg-surface-raised p-4 sm:p-5 shadow-xs transition hover:border-border min-w-0">
+                      {/* Card Header */}
+                      <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between pb-3.5 border-b border-border/60">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="grid size-8 shrink-0 place-items-center rounded-xl bg-brand-soft text-brand-strong">
+                            <Hash className="size-4" aria-hidden="true" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <h3 className="text-sm font-bold text-foreground">
+                                Used Hashtags
+                              </h3>
+                              <Badge tone="brand" className="text-[10px]">
+                                {activeHashtags.length} {activeHashtags.length === 1 ? "hashtag" : "hashtags"}
+                              </Badge>
+                            </div>
+                            <p className="text-xs text-muted">
+                              Hashtags extracted from the video title and description
+                            </p>
+                          </div>
+                        </div>
+
+                        {activeHashtags.length > 0 ? (
+                          <button
+                            type="button"
+                            onClick={handleCopyHashtags}
+                            className="flex items-center gap-1 text-xs font-bold text-brand hover:underline shrink-0"
+                            title="Copy all hashtags space-separated"
+                          >
+                            <Copy className="size-3" aria-hidden="true" />
+                            <span>Copy all hashtags</span>
+                          </button>
+                        ) : null}
+                      </div>
+
+                      {/* Card Body - Chips */}
+                      <div className="pt-4 min-w-0">
+                        {activeHashtags.length > 0 ? (
+                          <div className="flex flex-wrap gap-2">
+                            {activeHashtags.map((ht, idx) => {
+                              const formatted = ht.startsWith("#") ? ht : `#${ht}`;
+                              return (
+                                <button
+                                  key={`ht-${ht}-${idx}`}
+                                  type="button"
+                                  onClick={() => handleCopySingleTag(formatted, `ht-${idx}`)}
+                                  title={`Click to copy "${formatted}"`}
+                                  className="group inline-flex items-center gap-1.5 rounded-xl border border-brand/25 bg-brand-soft/40 hover:bg-brand-soft hover:border-brand/50 px-3 py-1.5 text-xs font-semibold text-brand-strong transition-all shadow-2xs hover:shadow-xs active:scale-[0.98]"
+                                >
+                                  <span className="break-words">{formatted}</span>
+                                  {copiedKey === `ht-${idx}` ? (
+                                    <Check className="size-3 text-success shrink-0" aria-hidden="true" />
+                                  ) : (
+                                    <Copy className="size-3 text-brand/50 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" aria-hidden="true" />
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <div className="rounded-xl border border-dashed border-border/80 bg-surface-muted/30 p-6 text-center">
+                            <Hash className="mx-auto size-6 text-muted/60" aria-hidden="true" />
+                            <p className="mt-2 text-xs font-semibold text-foreground">
+                              No hashtags found in title or description
+                            </p>
+                            <p className="mt-1 text-[11px] text-muted">
+                              The creator did not include any #hashtags in the title or description.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+
+              {/* TAB 3: AI SUMMARY */}
               {activeTab === "summary" ? (
                 <div
                   role="tabpanel"

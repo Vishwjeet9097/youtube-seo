@@ -110,6 +110,8 @@ describe("YouTube Transcript & AI Summary route handlers", () => {
       });
       expect(body.data.wordCount).toBe(6);
       expect(body.data.sourceLanguage).toBe("en");
+      expect(Array.isArray(body.data.tags)).toBe(true);
+      expect(Array.isArray(body.data.hashtags)).toBe(true);
     });
 
     it("translates English transcript to Hindi Devanagari when outputLanguage is hi", async () => {
