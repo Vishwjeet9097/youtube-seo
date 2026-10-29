@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import { CompetitorClient } from "@/components/pages/competitor-client";
 
 export const metadata: Metadata = {
-  title: "Tag comparison",
-  description: "Compare public tags, title words, and hashtags across channels without filling in missing data.",
+  title: "Compare tags",
+  description: "Compare tags from two or more videos to see what they have in common.",
 };
 
 export default function CompetitorPage() {

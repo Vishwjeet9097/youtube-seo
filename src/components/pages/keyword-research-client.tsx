@@ -14,8 +14,14 @@ import type { KeywordMetric, ResearchResult } from "@/types/research";
 type Category = "all" | "suggestions" | "titles" | "tags" | "hashtags" | "related" | "provider" | "generated";
 
 const CATEGORY_LABELS: Record<Category, string> = {
-  all: "All results", suggestions: "Autocomplete", titles: "Title words", tags: "Public tags",
-  hashtags: "Hashtags", related: "Related queries", provider: "Reported search volume", generated: "Generated variants",
+  all: "All results",
+  suggestions: "Search suggestions",
+  titles: "Title words",
+  tags: "Video tags",
+  hashtags: "Hashtags",
+  related: "Related searches",
+  provider: "Search volume (est.)",
+  generated: "Word ideas",
 };
 
 export function KeywordResearchClient() {
@@ -88,39 +94,238 @@ export function KeywordResearchClient() {
 
   return (
     <div className="page-shell">
-      <PageHeader eyebrow="Clear source comparisons" title="Topic research" description="Compare suggestions, title words, public tags, hashtags, related queries, and search-volume estimates by source." actions={result ? <Button variant="secondary" onClick={save}><Save className="size-4" />Save research</Button> : undefined} />
+      <PageHeader
+        eyebrow="TOPIC RESEARCH"
+        title="Topic research"
+        description="Explore a topic and find related search terms, video tags, and hashtags."
+        actions={
+          result ? (
+            <Button variant="secondary" onClick={save}>
+              <Save className="size-4" />
+              Save results
+            </Button>
+          ) : undefined
+        }
+      />
       <Panel>
-        <form className="p-5 sm:p-6" onSubmit={(event) => { event.preventDefault(); void run(); }}>
+        <form
+          className="p-5 sm:p-6"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void run();
+          }}
+        >
           <div className="grid gap-4 lg:grid-cols-[minmax(260px,1fr)_170px_170px_170px_130px]">
-            <Field label="Topic"><Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="e.g. Chhath Puja songs" autoComplete="off" /></Field>
-            <Field label="Region"><RegionSelect value={region} onChange={(event) => setRegion(event.target.value)} /></Field>
-            <Field label="Language"><LanguageSelect value={language} onChange={(event) => setLanguage(event.target.value)} /></Field>
-            <Field label="Published within"><Select value={dateRange} onChange={(event) => setDateRange(event.target.value)}><option value="any">Any date</option><option value="1">Last 24 hours</option><option value="2">Last 48 hours</option><option value="7">Last 7 days</option><option value="28">Last 28 days</option></Select></Field>
-            <Field label="Videos in sample"><Select value={maxResults} onChange={(event) => setMaxResults(Number(event.target.value))}><option value={10}>10 videos</option><option value={25}>25 videos</option><option value={50}>50 videos</option></Select></Field>
+            <Field label="Topic">
+              <Input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="e.g. photography tips"
+                autoComplete="off"
+              />
+            </Field>
+            <Field label="Region">
+              <RegionSelect value={region} onChange={(event) => setRegion(event.target.value)} />
+            </Field>
+            <Field label="Language">
+              <LanguageSelect value={language} onChange={(event) => setLanguage(event.target.value)} />
+            </Field>
+            <Field label="Published within">
+              <Select value={dateRange} onChange={(event) => setDateRange(event.target.value)}>
+                <option value="any">Any date</option>
+                <option value="1">Last 24 hours</option>
+                <option value="2">Last 48 hours</option>
+                <option value="7">Last 7 days</option>
+                <option value="28">Last 28 days</option>
+              </Select>
+            </Field>
+            <Field label="Videos to check">
+              <Select value={maxResults} onChange={(event) => setMaxResults(Number(event.target.value))}>
+                <option value={10}>10 videos</option>
+                <option value={25}>25 videos</option>
+                <option value={50}>50 videos</option>
+              </Select>
+            </Field>
           </div>
           <div className="mt-4 flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center">
-            <label className="flex items-center gap-2 text-sm text-muted"><input type="checkbox" checked={includeSuggestions} onChange={(event) => setIncludeSuggestions(event.target.checked)} className="size-4 accent-[var(--brand)]" />Include YouTube autocomplete</label>
-            <label className="flex items-center gap-2 text-sm text-muted"><input type="checkbox" checked={experimental} onChange={(event) => setExperimental(event.target.checked)} className="size-4 accent-[var(--brand)]" />Include generated variants (not observed)</label>
-            <Button type="submit" className="sm:ml-auto" disabled={loading || query.trim().length < 2}><Search className={`size-4 ${loading ? "animate-pulse" : ""}`} />{loading ? "Researching" : "Research topic"}</Button>
+            <label className="flex items-center gap-2 text-sm text-muted">
+              <input
+                type="checkbox"
+                checked={includeSuggestions}
+                onChange={(event) => setIncludeSuggestions(event.target.checked)}
+                className="size-4 accent-[var(--brand)]"
+              />
+              Include YouTube search suggestions
+            </label>
+            <label className="flex items-center gap-2 text-sm text-muted">
+              <input
+                type="checkbox"
+                checked={experimental}
+                onChange={(event) => setExperimental(event.target.checked)}
+                className="size-4 accent-[var(--brand)]"
+              />
+              Include related word ideas (unverified)
+            </label>
+            <Button type="submit" className="sm:ml-auto" disabled={loading || query.trim().length < 2}>
+              <Search className={`size-4 ${loading ? "animate-pulse" : ""}`} />
+              {loading ? "Searching…" : "Start research"}
+            </Button>
           </div>
         </form>
       </Panel>
 
-      {error ? <Callout className="mt-5" tone="danger" title="Couldn’t research topic">{error}</Callout> : null}
-      {loading ? <Panel className="mt-6"><LoadingState label="Finding videos and organizing results by source" /></Panel> : null}
-      {!loading && !result ? <Panel className="mt-6"><EmptyState icon={Search} title="Start with a topic" description="Enter a topic, choose your filters, then select Research topic." /></Panel> : null}
+      {error ? (
+        <Callout className="mt-5" tone="danger" title="Couldn’t research topic">
+          {error}
+        </Callout>
+      ) : null}
+      {loading ? (
+        <Panel className="mt-6">
+          <LoadingState label="Finding videos and organizing results by source" />
+        </Panel>
+      ) : null}
+      {!loading && !result ? (
+        <Panel className="mt-6">
+          <EmptyState
+            icon={Search}
+            title="Enter a topic to get started"
+            description="Enter a topic above, choose your filters, and select Start research."
+          />
+        </Panel>
+      ) : null}
 
-      {!loading && result ? <div className="mt-6 space-y-6">
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><Metric label="Videos in sample" value={result.sampleSize} detail="Sample count, not number of searches" /><Metric label="Public tags" value={result.tags.length} detail="Distinct public tags after text matching" /><Metric label="Hashtags" value={result.hashtags.length} detail="Found in video titles and descriptions" /><Metric label="Keywords with volume" value={result.providerMetrics.filter((row) => row.searchVolume !== null).length} detail="Rows with reported search volume" /></div>
-        {result.warnings.length ? <Callout tone="warning" title="Notes about these results"><ul className="list-disc space-y-1 pl-4">{result.warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul></Callout> : null}
-        <div className="flex gap-1 overflow-x-auto rounded-xl border bg-surface p-1" role="tablist" aria-label="Result category">{(Object.keys(CATEGORY_LABELS) as Category[]).map((key) => <button key={key} role="tab" aria-selected={category === key} onClick={() => setCategory(key)} className={`shrink-0 rounded-lg px-3 py-2 text-xs font-semibold transition ${category === key ? "bg-brand-soft text-brand-strong" : "text-muted hover:bg-surface-muted hover:text-foreground"}`}>{CATEGORY_LABELS[key]} <span className="ml-1 opacity-65">{countForCategory(result, key)}</span></button>)}</div>
-        {category === "generated" ? <Callout tone="warning" title="Generated variants">Excluded from All results.</Callout> : null}
-        <KeywordTable rows={rows} title={CATEGORY_LABELS[category]} description={descriptionForCategory(category)} exportLabel={`${result.query}-${category}`} emptyMessage={emptyForCategory(category)} />
+      {!loading && result ? (
+        <div className="mt-6 space-y-6">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <Metric
+              label="Videos checked"
+              value={result.sampleSize}
+              detail="Number of videos analyzed"
+            />
+            <Metric
+              label="Tags found"
+              value={result.tags.length}
+              detail="Tags used by video creators"
+            />
+            <Metric
+              label="Hashtags found"
+              value={result.hashtags.length}
+              detail="Hashtags in titles and descriptions"
+            />
+            <Metric
+              label="Keywords with search data"
+              value={result.providerMetrics.filter((row) => row.searchVolume !== null).length}
+              detail="Keywords with available search estimates"
+            />
+          </div>
+          {result.warnings.length ? (
+            <Callout tone="warning" title="Notes about these results">
+              <ul className="list-disc space-y-1 pl-4">
+                {result.warnings.map((warning) => (
+                  <li key={warning}>{warning}</li>
+                ))}
+              </ul>
+            </Callout>
+          ) : null}
+          <div className="flex gap-1 overflow-x-auto rounded-xl border bg-surface p-1" role="tablist" aria-label="Result category">
+            {(Object.keys(CATEGORY_LABELS) as Category[]).map((key) => (
+              <button
+                key={key}
+                role="tab"
+                aria-selected={category === key}
+                onClick={() => setCategory(key)}
+                className={`shrink-0 rounded-lg px-3 py-2 text-xs font-semibold transition ${category === key ? "bg-brand-soft text-brand-strong" : "text-muted hover:bg-surface-muted hover:text-foreground"}`}
+              >
+                {CATEGORY_LABELS[key]} <span className="ml-1 opacity-65">{countForCategory(result, key)}</span>
+              </button>
+            ))}
+          </div>
+          {category === "generated" ? (
+            <Callout tone="warning" title="Word ideas">
+              These suggestions are generated ideas, not observed in YouTube source data. Excluded from All results.
+            </Callout>
+          ) : null}
+          <KeywordTable
+            rows={rows}
+            title={CATEGORY_LABELS[category]}
+            description={descriptionForCategory(category)}
+            exportLabel={`${result.query}-${category}`}
+            emptyMessage={emptyForCategory(category)}
+          />
 
-        <Panel><div className="panel-header"><div><h2 className="text-sm font-semibold">Spelling and script variations in sample</h2><p className="mt-1 text-xs text-muted">Exact source text close to your topic; no automatic corrections are applied.</p></div><Badge tone="brand">{variations.size} found</Badge></div>{variations.size ? <div className="grid gap-3 p-5 sm:grid-cols-2 lg:grid-cols-3">{[...variations].map(([variation, links]) => <div key={variation} className="rounded-lg border p-3"><p className="text-sm font-semibold">{variation}</p><p className="mt-1 text-xs text-muted">{links.length} video{links.length === 1 ? "" : "s"} in sample</p><div className="mt-2 flex flex-wrap gap-2">{links.slice(0, 4).map((link, index) => <a key={link} href={link} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs font-semibold text-brand">Video {index + 1}<ExternalLink className="size-3" /></a>)}</div></div>)}</div> : <EmptyState icon={FlaskConical} title="No close variants found" description="No matching variations were found in the videos in sample. Other variants may still exist." compact />}</Panel>
+          <Panel>
+            <div className="panel-header">
+              <div>
+                <h2 className="text-sm font-semibold">Spelling variations in videos</h2>
+                <p className="mt-1 text-xs text-muted">
+                  Different spellings of your topic found in the analyzed videos.
+                </p>
+              </div>
+              <Badge tone="brand">{variations.size} found</Badge>
+            </div>
+            {variations.size ? (
+              <div className="grid gap-3 p-5 sm:grid-cols-2 lg:grid-cols-3">
+                {[...variations].map(([variation, links]) => (
+                  <div key={variation} className="rounded-lg border p-3">
+                    <p className="text-sm font-semibold">{variation}</p>
+                    <p className="mt-1 text-xs text-muted">
+                      {links.length} video{links.length === 1 ? "" : "s"} in sample
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {links.slice(0, 4).map((link, index) => (
+                        <a
+                          key={link}
+                          href={link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-xs font-semibold text-brand hover:underline"
+                        >
+                          Video {index + 1}
+                          <ExternalLink className="size-3" />
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <EmptyState
+                icon={FlaskConical}
+                title="No close variants found"
+                description="No matching variations were found in the analyzed videos. Other variations may still exist."
+                compact
+              />
+            )}
+          </Panel>
 
-        <Panel><div className="panel-header"><div><h2 className="text-sm font-semibold">Videos in sample</h2><p className="mt-1 text-xs text-muted">Open the videos used to find title words, public tags, and hashtags.</p></div></div><div className="divide-y">{result.videos.map((video) => <a key={video.id} href={video.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 px-5 py-3 text-sm transition hover:bg-surface-muted"><Video className="size-4 shrink-0 text-muted" /><span className="min-w-0 flex-1 truncate font-medium">{video.title}</span><span className="hidden text-xs text-muted sm:block">{video.channelTitle}</span><ExternalLink className="size-3.5 text-subtle" /></a>)}</div></Panel>
-      </div> : null}
+          <Panel>
+            <div className="panel-header">
+              <div>
+                <h2 className="text-sm font-semibold">Videos analyzed</h2>
+                <p className="mt-1 text-xs text-muted">
+                  Open any video used to find title words, tags, and hashtags.
+                </p>
+              </div>
+            </div>
+            <div className="divide-y">
+              {result.videos.map((video) => (
+                <a
+                  key={video.id}
+                  href={video.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-3 px-5 py-3 text-sm transition hover:bg-surface-muted"
+                >
+                  <Video className="size-4 shrink-0 text-muted" />
+                  <span className="min-w-0 flex-1 truncate font-medium">{video.title}</span>
+                  <span className="hidden text-xs text-muted sm:block">{video.channelTitle}</span>
+                  <ExternalLink className="size-3.5 text-subtle" />
+                </a>
+              ))}
+            </div>
+          </Panel>
+        </div>
+      ) : null}
       <span className="sr-only" aria-live="polite">{notice}</span>
     </div>
   );

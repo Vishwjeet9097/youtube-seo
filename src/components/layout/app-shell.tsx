@@ -22,15 +22,15 @@ import {
 import { useWorkspace, updateWorkspace } from "@/hooks/use-workspace";
 
 const navigation = [
-  { href: "/", label: "Overview", icon: Home },
-  { href: "/transcript", label: "Transcript & Summary", icon: FileText },
+  { href: "/", label: "Dashboard", icon: Home },
+  { href: "/transcript", label: "Transcripts & summaries", icon: FileText },
   { href: "/keywords", label: "Topic research", icon: Search },
   { href: "/extract", label: "Tag extractor", icon: Tags },
-  { href: "/trending", label: "Short-term trends", icon: BarChart3 },
+  { href: "/trending", label: "Keyword trends", icon: BarChart3 },
   { href: "/hashtags", label: "Hashtag research", icon: Hash },
-  { href: "/competitors", label: "Tag comparison", icon: UsersRound },
-  { href: "/saved", label: "Saved research", icon: Bookmark },
-  { href: "/sources", label: "Sources and methods", icon: Database },
+  { href: "/competitors", label: "Compare tags", icon: UsersRound },
+  { href: "/saved", label: "Saved items", icon: Bookmark },
+  { href: "/sources", label: "Data sources", icon: Database },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -132,9 +132,9 @@ export function AppShell({ children }: { children: ReactNode }) {
             <div className="rounded-2xl border border-border/80 bg-surface-muted/80 p-3.5">
               <div className="flex items-center gap-2">
                 <span className="size-1.5 rounded-full bg-success" aria-hidden="true" />
-                <p className="text-[11px] font-bold">Saved in this browser</p>
+                <p className="text-[11px] font-bold">Saved on this device</p>
               </div>
-              <p className="mt-1.5 text-[10px] leading-[1.55] text-muted">Saved research stays in this browser. Research requests use the sources configured for each tool.</p>
+              <p className="mt-1.5 text-[10px] leading-[1.55] text-muted">Your saved research stays in this browser. It may not appear on another device or browser.</p>
             </div>
           </div>
         </aside>
@@ -152,12 +152,12 @@ export function AppShell({ children }: { children: ReactNode }) {
               <Menu className="size-5" />
             </button>
             <div className="ml-2 min-w-0 lg:ml-0">
-              <p className="truncate text-[13px] font-bold tracking-[-0.01em]">YouTube research with clear sources</p>
-              <p className="hidden text-[10px] leading-4 text-muted sm:block">Source data, search-volume estimates, and local calculations stay separate</p>
+              <p className="truncate text-[13px] font-bold tracking-[-0.01em]">Find and research YouTube content</p>
+              <p className="hidden text-[10px] leading-4 text-muted sm:block">Explore video transcripts, tags, topics, hashtags, and trends.</p>
             </div>
             <div className="ml-auto flex items-center gap-2">
               {!workspace.available && workspace.hydrated ? (
-                <span className="hidden rounded-full border border-warning/30 bg-warning-soft px-2.5 py-1 text-[10px] font-bold text-warning sm:inline">Browser saving unavailable</span>
+                <span className="hidden rounded-full border border-warning/30 bg-warning-soft px-2.5 py-1 text-[10px] font-bold text-warning sm:inline">Saving to device unavailable</span>
               ) : null}
               <button className="button-ghost border border-transparent !h-10 !px-2.5 hover:border-border sm:!px-3" onClick={cycleTheme} aria-label={`Theme: ${theme}. Change theme.`} title={`Theme: ${theme}`}>
                 <ThemeIcon className="size-4" aria-hidden="true" />

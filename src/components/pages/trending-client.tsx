@@ -92,34 +92,230 @@ export function TrendingClient() {
 
   return (
     <div className="page-shell">
-      <PageHeader eyebrow="Recent video samples" title="Short-term trends" description="See which terms appear in recent video samples or the current regional popular-video chart. Date ranges use video publish dates, and change in sample share needs an earlier matching sample saved in this browser." actions={result ? <Button variant="secondary" onClick={save}><Save className="size-4" />Save this sample</Button> : undefined} />
+      <PageHeader
+        eyebrow="KEYWORD TRENDS"
+        title="Keyword trends"
+        description="Check how keyword interest and video tags change over time."
+        actions={
+          result ? (
+            <Button variant="secondary" onClick={save}>
+              <Save className="size-4" />
+              Save results
+            </Button>
+          ) : undefined
+        }
+      />
       <Panel>
-        <form className="p-5 sm:p-6" onSubmit={(event) => { event.preventDefault(); void run(); }}>
-          <div className="flex gap-1 overflow-x-auto border-b pb-4" role="tablist" aria-label="Time range for short-term trends">{timeframes.map(([value, label]) => <button type="button" key={value} role="tab" aria-selected={timeframe === value} onClick={() => setTimeframe(value)} className={`shrink-0 rounded-lg px-3 py-2 text-xs font-semibold ${timeframe === value ? "bg-brand-soft text-brand-strong" : "text-muted hover:bg-surface-muted"}`}>{label}</button>)}</div>
-          <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-6">
-            <Field label="Topic (optional)" className="xl:col-span-2"><Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Leave blank for the current regional popular-video chart" /></Field>
-            <Field label="Region"><RegionSelect value={region} onChange={(event) => setRegion(event.target.value)} /></Field>
-            <Field label="Language"><LanguageSelect value={language} onChange={(event) => setLanguage(event.target.value)} /></Field>
-            <Field label="Category"><Select value={categoryId} onChange={(event) => setCategoryId(event.target.value)}>{categories.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</Select></Field>
-            <Field label="Video length"><Select value={contentType} onChange={(event) => setContentType(event.target.value)}><option value="all">All video lengths</option><option value="short">Shorts (estimated from duration)</option><option value="long">Longer videos (over 3 minutes)</option></Select></Field>
+        <form
+          className="p-5 sm:p-6"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void run();
+          }}
+        >
+          <div className="flex gap-1 overflow-x-auto border-b pb-4" role="tablist" aria-label="Time range for keyword trends">
+            {timeframes.map(([value, label]) => (
+              <button
+                type="button"
+                key={value}
+                role="tab"
+                aria-selected={timeframe === value}
+                onClick={() => setTimeframe(value)}
+                className={`shrink-0 rounded-lg px-3 py-2 text-xs font-semibold ${timeframe === value ? "bg-brand-soft text-brand-strong" : "text-muted hover:bg-surface-muted"}`}
+              >
+                {label}
+              </button>
+            ))}
           </div>
-          {timeframe === "custom" ? <div className="mt-4 grid max-w-xl gap-4 sm:grid-cols-2"><Field label="Start date"><Input type="date" max={new Date().toISOString().slice(0, 10)} value={customStart} onChange={(event) => setCustomStart(event.target.value)} /></Field><Field label="End date"><Input type="date" max={new Date().toISOString().slice(0, 10)} value={customEnd} onChange={(event) => setCustomEnd(event.target.value)} /></Field></div> : null}
-          <div className="mt-4 flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-end"><Field label="Sort sampled videos by" className="w-full sm:w-56"><Select value={order} onChange={(event) => setOrder(event.target.value)} disabled={!query.trim()}><option value="viewCount">Most viewed</option><option value="date">Newest</option><option value="relevance">Most relevant</option></Select></Field><p className="max-w-2xl text-xs leading-5 text-muted">Leave Topic blank to use the current regional popular-video chart, then limit its videos by publish date. This shows the chart as it looks now; it does not recreate past charts.</p><Button type="submit" className="sm:ml-auto" disabled={loading}>{loading ? <RefreshCw className="size-4 animate-spin" /> : <BarChart3 className="size-4" />}{loading ? "Loading…" : "Show trends"}</Button></div>
+          <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-6">
+            <Field label="Topic (optional)" className="xl:col-span-2">
+              <Input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Leave blank for popular videos in this region"
+              />
+            </Field>
+            <Field label="Region">
+              <RegionSelect value={region} onChange={(event) => setRegion(event.target.value)} />
+            </Field>
+            <Field label="Language">
+              <LanguageSelect value={language} onChange={(event) => setLanguage(event.target.value)} />
+            </Field>
+            <Field label="Category">
+              <Select value={categoryId} onChange={(event) => setCategoryId(event.target.value)}>
+                {categories.map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            <Field label="Video length">
+              <Select value={contentType} onChange={(event) => setContentType(event.target.value)}>
+                <option value="all">All video lengths</option>
+                <option value="short">Shorts</option>
+                <option value="long">Longer videos (over 3 minutes)</option>
+              </Select>
+            </Field>
+          </div>
+          {timeframe === "custom" ? (
+            <div className="mt-4 grid max-w-xl gap-4 sm:grid-cols-2">
+              <Field label="Start date">
+                <Input
+                  type="date"
+                  max={new Date().toISOString().slice(0, 10)}
+                  value={customStart}
+                  onChange={(event) => setCustomStart(event.target.value)}
+                />
+              </Field>
+              <Field label="End date">
+                <Input
+                  type="date"
+                  max={new Date().toISOString().slice(0, 10)}
+                  value={customEnd}
+                  onChange={(event) => setCustomEnd(event.target.value)}
+                />
+              </Field>
+            </div>
+          ) : null}
+          <div className="mt-4 flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-end">
+            <Field label="Sort sampled videos by" className="w-full sm:w-56">
+              <Select value={order} onChange={(event) => setOrder(event.target.value)} disabled={!query.trim()}>
+                <option value="viewCount">Most viewed</option>
+                <option value="date">Newest</option>
+                <option value="relevance">Most relevant</option>
+              </Select>
+            </Field>
+            <p className="max-w-2xl text-xs leading-5 text-muted">
+              Leave topic blank to see current popular videos in your selected region.
+            </p>
+            <Button type="submit" className="sm:ml-auto" disabled={loading}>
+              {loading ? <RefreshCw className="size-4 animate-spin" /> : <BarChart3 className="size-4" />}
+              {loading ? "Loading…" : "Show trends"}
+            </Button>
+          </div>
         </form>
       </Panel>
 
-      {error ? <Callout className="mt-5" tone="danger" title="Couldn’t load short-term trends">{error}</Callout> : null}
-      {loading ? <Panel className="mt-6"><LoadingState label="Loading a recent video sample" /></Panel> : null}
-      {!loading && !result ? <Panel className="mt-6"><EmptyState icon={CalendarRange} title="No video sample yet" description="Choose a region and time range. Add a topic for a recent video sample, or leave it blank for the current regional popular-video chart." /></Panel> : null}
-      {!loading && result ? <div className="mt-6 space-y-6">
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5"><Metric label="Videos in sample" value={String(result.sampleSize)} detail="Unique public videos available to analyze" /><Metric label="Channels in sample" value={String(new Set(result.videos.map((video) => video.channelId)).size)} detail="Across these videos" /><Metric label="Average views" value={viewValues.length ? formatNumber(Math.round(viewValues.reduce((sum, value) => sum + value, 0) / viewValues.length)) : "Not available"} detail="Using available view counts" /><Metric label="Terms with comparison data" value={String([...result.tags, ...result.hashtags, ...result.titleKeywords, ...result.titlePhrases].filter((row) => ["rising", "stable", "falling"].includes(row.trendStatus)).length)} detail="Compared with an earlier matching sample" /><Metric label="Sample date" value={formatDate(result.retrievedAt, true)} detail={`${result.region} · ${result.query ? "recent video sample" : "current regional popular-video chart"}`} /></div>
-        <Callout tone="info" title="About this sample"><strong>{formatDate(result.windowStart, true)}</strong> to <strong>{formatDate(result.windowEnd, true)}</strong> · {result.sampleSize} videos in sample · {result.region}. A term appearing in 12 videos means it appears in 12 videos in this sample—not that it was searched for 12 times.</Callout>
-        {result.warnings.length ? <Callout tone="warning" title="Limits of this sample"><ul className="list-disc space-y-1 pl-4">{result.warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul></Callout> : null}
-        <Panel><div className="panel-header"><div><h2 className="text-sm font-semibold">Videos by publish date</h2><p className="mt-1 text-xs text-muted">Number of videos published on each UTC date</p></div><Badge tone="brand">UTC publish dates</Badge></div><div className="p-4"><PublicationChart videos={result.videos} /></div></Panel>
-        <div className="flex gap-1 overflow-x-auto rounded-xl border bg-surface p-1" role="tablist" aria-label="Term type">{(Object.keys(termLabels) as TermTab[]).map((key) => <button key={key} onClick={() => setTermTab(key)} role="tab" aria-selected={termTab === key} className={`shrink-0 rounded-lg px-3 py-2 text-xs font-semibold ${termTab === key ? "bg-brand-soft text-brand-strong" : "text-muted hover:bg-surface-muted"}`}>{termLabels[key]} <span className="ml-1 opacity-60">{result[key].length}</span></button>)}</div>
-        <TrendTable rows={currentRows} title={termLabels[termTab]} exportLabel={`${result.query ?? `popular-${result.region}`}-${result.timeframe}-${termTab}`} />
-        <Panel><div className="panel-header"><div><h2 className="text-sm font-semibold">Videos in sample</h2><p className="mt-1 text-xs text-muted">Showing up to 20 videos. Open a video to check its publish date, channel, and available view count.</p></div></div><div className="divide-y">{result.videos.slice(0, 20).map((video) => <a href={video.url} target="_blank" rel="noopener noreferrer" key={video.id} className="flex items-center gap-3 px-5 py-3 hover:bg-surface-muted"><div className="min-w-0 flex-1"><p className="truncate text-xs font-semibold">{video.title}</p><p className="mt-0.5 text-[11px] text-muted">{video.channelTitle} · Published {formatDate(video.publishedAt, true)} · {formatNumber(video.statistics.viewCount)} views</p></div><ExternalLink className="size-3.5 shrink-0 text-subtle" /></a>)}</div></Panel>
-      </div> : null}
+      {error ? (
+        <Callout className="mt-5" tone="danger" title="Couldn’t load trends">
+          {error}
+        </Callout>
+      ) : null}
+      {loading ? (
+        <Panel className="mt-6">
+          <LoadingState label="Analyzing recent videos" />
+        </Panel>
+      ) : null}
+      {!loading && !result ? (
+        <Panel className="mt-6">
+          <EmptyState
+            icon={CalendarRange}
+            title="Check what’s trending on YouTube"
+            description="Select a time range and region, then select Show trends."
+          />
+        </Panel>
+      ) : null}
+      {!loading && result ? (
+        <div className="mt-6 space-y-6">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+            <Metric
+              label="Videos analyzed"
+              value={String(result.sampleSize)}
+              detail="Unique public videos available to analyze"
+            />
+            <Metric
+              label="Channels included"
+              value={String(new Set(result.videos.map((video) => video.channelId)).size)}
+              detail="Across these videos"
+            />
+            <Metric
+              label="Average views"
+              value={viewValues.length ? formatNumber(Math.round(viewValues.reduce((sum, value) => sum + value, 0) / viewValues.length)) : "Not available"}
+              detail="Using available view counts"
+            />
+            <Metric
+              label="Terms with comparison data"
+              value={String([...result.tags, ...result.hashtags, ...result.titleKeywords, ...result.titlePhrases].filter((row) => ["rising", "stable", "falling"].includes(row.trendStatus)).length)}
+              detail="Compared with an earlier matching sample"
+            />
+            <Metric
+              label="Date analyzed"
+              value={formatDate(result.retrievedAt, true)}
+              detail={`${result.region} · ${result.query ? "recent videos" : "current popular videos"}`}
+            />
+          </div>
+          <Callout tone="info" title="About this sample">
+            <strong>{formatDate(result.windowStart, true)}</strong> to <strong>{formatDate(result.windowEnd, true)}</strong> · {result.sampleSize} videos analyzed · {result.region}. If a tag appears in 10 videos, it was used by creators 10 times in this sample—not searched 10 times.
+          </Callout>
+          {result.warnings.length ? (
+            <Callout tone="warning" title="Notes about this sample">
+              <ul className="list-disc space-y-1 pl-4">
+                {result.warnings.map((warning) => (
+                  <li key={warning}>{warning}</li>
+                ))}
+              </ul>
+            </Callout>
+          ) : null}
+          <Panel>
+            <div className="panel-header">
+              <div>
+                <h2 className="text-sm font-semibold">Videos by publish date</h2>
+                <p className="mt-1 text-xs text-muted">Number of videos published on each date</p>
+              </div>
+              <Badge tone="brand">UTC publish dates</Badge>
+            </div>
+            <div className="p-4">
+              <PublicationChart videos={result.videos} />
+            </div>
+          </Panel>
+          <div className="flex gap-1 overflow-x-auto rounded-xl border bg-surface p-1" role="tablist" aria-label="Term type">
+            {(Object.keys(termLabels) as TermTab[]).map((key) => (
+              <button
+                key={key}
+                onClick={() => setTermTab(key)}
+                role="tab"
+                aria-selected={termTab === key}
+                className={`shrink-0 rounded-lg px-3 py-2 text-xs font-semibold ${termTab === key ? "bg-brand-soft text-brand-strong" : "text-muted hover:bg-surface-muted"}`}
+              >
+                {termLabels[key]} <span className="ml-1 opacity-60">{result[key].length}</span>
+              </button>
+            ))}
+          </div>
+          <TrendTable
+            rows={currentRows}
+            title={termLabels[termTab]}
+            exportLabel={`${result.query ?? `popular-${result.region}`}-${result.timeframe}-${termTab}`}
+          />
+          <Panel>
+            <div className="panel-header">
+              <div>
+                <h2 className="text-sm font-semibold">Videos analyzed</h2>
+                <p className="mt-1 text-xs text-muted">Showing up to 20 videos. Open any video to check its details.</p>
+              </div>
+            </div>
+            <div className="divide-y">
+              {result.videos.slice(0, 20).map((video) => (
+                <a
+                  href={video.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  key={video.id}
+                  className="flex items-center gap-3 px-5 py-3 hover:bg-surface-muted"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-xs font-semibold">{video.title}</p>
+                    <p className="mt-0.5 text-[11px] text-muted">
+                      {video.channelTitle} · Published {formatDate(video.publishedAt, true)} · {formatNumber(video.statistics.viewCount)} views
+                    </p>
+                  </div>
+                  <ExternalLink className="size-3.5 shrink-0 text-subtle" />
+                </a>
+              ))}
+            </div>
+          </Panel>
+        </div>
+      ) : null}
       <span className="sr-only" aria-live="polite">{notice}</span>
     </div>
   );

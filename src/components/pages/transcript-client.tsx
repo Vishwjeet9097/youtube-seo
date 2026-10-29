@@ -464,9 +464,9 @@ export function TranscriptClient() {
   return (
     <div className="page-shell">
       <PageHeader
-        eyebrow="Research Tools"
-        title="YouTube Transcript & AI Summary"
-        description="Extract clean spoken transcripts with optional synchronized timestamps, generate token-aware AI summaries, and translate into Hindi and other languages."
+        eyebrow="TRANSCRIPTS & SUMMARIES"
+        title="Transcripts & summaries"
+        description="Get a video transcript and a short summary."
       />
 
       {notice ? (
@@ -1085,7 +1085,7 @@ export function TranscriptClient() {
                         <div className="flex items-center gap-2">
                           <Sparkles className="size-4 text-brand-strong" aria-hidden="true" />
                           <h3 className="text-xs font-bold uppercase tracking-wider text-brand-strong">
-                            Executive Overview
+                            Overview
                           </h3>
                         </div>
                         <p className="mt-2.5 text-sm leading-relaxed text-foreground">
@@ -1097,7 +1097,7 @@ export function TranscriptClient() {
                       {summaryData.keyTakeaways.length > 0 ? (
                         <div>
                           <h4 className="text-xs font-bold uppercase tracking-wider text-muted">
-                            Key Takeaways
+                            Key takeaways
                           </h4>
                           <ul className="mt-3 space-y-2">
                             {summaryData.keyTakeaways.map((takeaway, idx) => (
@@ -1119,7 +1119,7 @@ export function TranscriptClient() {
                       {summaryData.sections.length > 0 ? (
                         <div className="space-y-4">
                           <h4 className="text-xs font-bold uppercase tracking-wider text-muted">
-                            Detailed Sections
+                            Key topics
                           </h4>
                           {summaryData.sections.map((section, idx) => (
                             <div key={idx} className="rounded-xl border bg-surface-muted/30 p-4">
@@ -1145,8 +1145,8 @@ export function TranscriptClient() {
                     <div className="flex flex-1 items-center justify-center p-8">
                       <EmptyState
                         icon={Sparkles}
-                        title="Generate AI Summary"
-                        description="Click below to generate a structured AI summary based solely on the spoken transcript."
+                        title="Generate summary"
+                        description="Create a short summary and key takeaways from the video transcript."
                         action={
                           <Button
                             type="button"
@@ -1171,7 +1171,7 @@ export function TranscriptClient() {
           <EmptyState
             icon={Video}
             title="Paste a YouTube link above"
-            description="Enter a YouTube watch URL, Shorts link, or video ID to fetch clean captions without timestamps by default, interact with clickable timestamps, and generate structured AI summaries."
+            description="Enter a video link to read the transcript, search dialogue, or generate a short summary."
           />
         </Panel>
       )}

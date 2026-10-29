@@ -110,38 +110,202 @@ export function TagExtractorClient() {
 
   return (
     <div className="page-shell">
-      <PageHeader eyebrow="YouTube tags" title="YouTube tag extractor" description="See public tags and hashtags from public YouTube videos. Missing tags are never guessed from titles." actions={results.length ? <><Button variant="secondary" onClick={save}><Save className="size-4" />Save results</Button><Button variant="secondary" onClick={() => exportResults("csv")}><Download className="size-4" />Export CSV</Button><Button variant="secondary" onClick={() => exportResults("json")}>Export JSON</Button></> : undefined} />
+      <PageHeader
+        eyebrow="TAG EXTRACTOR"
+        title="Tag extractor"
+        description="Find the tags used on any YouTube video or channel."
+        actions={
+          results.length ? (
+            <>
+              <Button variant="secondary" onClick={save}>
+                <Save className="size-4" />
+                Save results
+              </Button>
+              <Button variant="secondary" onClick={() => exportResults("csv")}>
+                <Download className="size-4" />
+                Export CSV
+              </Button>
+              <Button variant="secondary" onClick={() => exportResults("json")}>
+                Export JSON
+              </Button>
+            </>
+          ) : undefined
+        }
+      />
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
         <Panel>
           <div className="p-5 sm:p-6">
-            <Field label="YouTube videos or channels" hint="Paste one link, handle, or ID per line. Add up to 20 items total, including up to 5 channels. Videos, Shorts, live videos, and channels are supported.">
-              <Textarea value={inputs} onChange={(event) => setInputs(event.target.value)} rows={6} placeholder={"https://www.youtube.com/watch?v=…\nhttps://youtu.be/…\nhttps://www.youtube.com/@channel"} spellCheck={false} />
+            <Field
+              label="YouTube videos or channels"
+              hint="Paste one link, handle, or ID per line. You can check up to 20 videos or 5 channels."
+            >
+              <Textarea
+                value={inputs}
+                onChange={(event) => setInputs(event.target.value)}
+                rows={6}
+                placeholder={"https://www.youtube.com/watch?v=…\nhttps://youtu.be/…\nhttps://www.youtube.com/@channel"}
+                spellCheck={false}
+              />
             </Field>
             <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
-              <Field label="Videos to check per channel" className="w-full sm:w-56"><Input type="number" min={1} max={50} value={channelLimit} onChange={(event) => setChannelLimit(Math.min(50, Math.max(1, Number(event.target.value))))} /></Field>
-              <label className="flex h-10 items-center gap-2 text-sm text-muted"><input type="checkbox" checked={deduplicate} onChange={(event) => { setDeduplicate(event.target.checked); updateWorkspace((state) => ({ ...state, preferences: { ...state.preferences, deduplicateTags: event.target.checked } })); }} className="size-4 accent-[var(--brand)]" />Hide duplicate tags (ignores capitalization)</label>
-              <Button className="sm:ml-auto" onClick={() => run()} disabled={loading || !inputs.trim()}>{loading ? <RefreshCw className="size-4 animate-spin" /> : <Tags className="size-4" />}{loading ? "Getting tags" : "Extract tags"}</Button>
+              <Field label="Videos to check per channel" className="w-full sm:w-56">
+                <Input
+                  type="number"
+                  min={1}
+                  max={50}
+                  value={channelLimit}
+                  onChange={(event) =>
+                    setChannelLimit(Math.min(50, Math.max(1, Number(event.target.value))))
+                  }
+                />
+              </Field>
+              <label className="flex h-10 items-center gap-2 text-sm text-muted">
+                <input
+                  type="checkbox"
+                  checked={deduplicate}
+                  onChange={(event) => {
+                    setDeduplicate(event.target.checked);
+                    updateWorkspace((state) => ({
+                      ...state,
+                      preferences: { ...state.preferences, deduplicateTags: event.target.checked },
+                    }));
+                  }}
+                  className="size-4 accent-[var(--brand)]"
+                />
+                Hide duplicate tags (ignores capitalization)
+              </label>
+              <Button
+                className="sm:ml-auto"
+                onClick={() => run()}
+                disabled={loading || !inputs.trim()}
+              >
+                {loading ? <RefreshCw className="size-4 animate-spin" /> : <Tags className="size-4" />}
+                {loading ? "Getting tags" : "Extract tags"}
+              </Button>
             </div>
           </div>
         </Panel>
         <div className="space-y-3">
-          <Callout tone="info" title="Where public tags come from">Public tags are added by video uploaders and returned by YouTube. They are not searches or a measure of audience demand.</Callout>
-          <Callout tone="warning" title="When tags are unavailable">YouTube may not return details for private, deleted, restricted, or inaccessible videos. A public video can also be available but have no public tags.</Callout>
+          <Callout tone="info" title="Where video tags come from">
+            Tags are words added by video creators to help describe their video. They show what the creator chose, not what people are searching for.
+          </Callout>
+          <Callout tone="warning" title="When tags are unavailable">
+            Some videos do not have any tags. If a video is private, deleted, or restricted, its tags cannot be viewed.
+          </Callout>
         </div>
       </div>
 
-      {error ? <Callout className="mt-6" tone="danger" title="Couldn’t get tags">{error}</Callout> : null}
-      {loading ? <Panel className="mt-6"><LoadingState label={stage || "Getting tags from YouTube"} /></Panel> : null}
-      {!loading && results.length === 0 ? <Panel className="mt-6"><EmptyState icon={Tags} title="No tags to show yet" description="Add a public YouTube video or channel above, then select Extract tags." /></Panel> : null}
+      {error ? (
+        <Callout className="mt-6" tone="danger" title="Couldn’t get tags">
+          {error}
+        </Callout>
+      ) : null}
+      {loading ? (
+        <Panel className="mt-6">
+          <LoadingState label={stage || "Getting tags from YouTube"} />
+        </Panel>
+      ) : null}
+      {!loading && results.length === 0 ? (
+        <Panel className="mt-6">
+          <EmptyState
+            icon={Tags}
+            title="Paste a link to see video tags"
+            description="Enter a YouTube video or channel link above and select Extract tags."
+          />
+        </Panel>
+      ) : null}
 
-      {!loading && results.length > 0 ? <div className="mt-6 space-y-6">
-        <div className="grid gap-3 sm:grid-cols-3"><Summary label="Items checked" value={results.length} /><Summary label="Videos found" value={videos.length} /><Summary label="Unique public tags found" value={allTags.length} /></div>
-        {issues.length ? <Callout tone="warning" title={`${issues.length} ${issues.length === 1 ? "item needs" : "items need"} attention`}><ul className="space-y-1">{issues.map((item) => <li key={item.input} className="flex items-center justify-between gap-3"><span className="truncate">{item.input}: {item.error?.message ?? "Some results were unavailable for this item."}</span>{item.error?.retryable ? <Button size="small" variant="secondary" onClick={() => run([item.input])}><RefreshCw className="size-3" />Retry</Button> : null}</li>)}</ul></Callout> : <Callout tone="success" title="Tags ready"><span className="inline-flex items-center gap-1"><CheckCircle2 className="size-3" />Every item was checked successfully.</span></Callout>}
+      {!loading && results.length > 0 ? (
+        <div className="mt-6 space-y-6">
+          <div className="grid gap-3 sm:grid-cols-3">
+            <Summary label="Links checked" value={results.length} />
+            <Summary label="Videos found" value={videos.length} />
+            <Summary label="Tags found" value={allTags.length} />
+          </div>
+          {issues.length ? (
+            <Callout
+              tone="warning"
+              title={`${issues.length} ${issues.length === 1 ? "item needs" : "items need"} attention`}
+            >
+              <ul className="space-y-1">
+                {issues.map((item) => (
+                  <li key={item.input} className="flex items-center justify-between gap-3">
+                    <span className="truncate">
+                      {item.input}: {item.error?.message ?? "Some results were unavailable for this item."}
+                    </span>
+                    {item.error?.retryable ? (
+                      <Button size="small" variant="secondary" onClick={() => run([item.input])}>
+                        <RefreshCw className="size-3" />
+                        Retry
+                      </Button>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            </Callout>
+          ) : (
+            <Callout tone="success" title="Tags ready">
+              <span className="inline-flex items-center gap-1">
+                <CheckCircle2 className="size-3" />
+                Every item was checked successfully.
+              </span>
+            </Callout>
+          )}
 
-        {videos.length > 1 ? <Panel><div className="panel-header"><div><h2 className="text-sm font-semibold">Compare tags</h2><p className="mt-1 text-xs text-muted">Matching ignores capitalization. Each tag keeps the spelling from the first video where it appears.</p></div><Button variant="secondary" size="small" disabled={!allTags.length} onClick={async () => { try { await copyText(allTags.join(", ")); flash("Copied all tags."); } catch { flash("Couldn’t access the clipboard."); } }}><Clipboard className="size-3.5" />Copy all</Button></div><div className="grid gap-5 p-5 lg:grid-cols-2"><div><h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-muted">Tags in every video ({comparison.common.length})</h3><TagChips tags={comparison.common} deduplicate emptyMessage="No shared public tags are available for this comparison." /></div><div><h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-muted">Tags found in only one video ({comparison.unique.length})</h3><TagChips tags={comparison.unique} deduplicate emptyMessage="No public tags were found in only one video." /></div></div></Panel> : null}
+          {videos.length > 1 ? (
+            <Panel>
+              <div className="panel-header">
+                <div>
+                  <h2 className="text-sm font-semibold">Compare tags</h2>
+                  <p className="mt-1 text-xs text-muted">
+                    See which tags these videos share and which ones appear on only one video.
+                  </p>
+                </div>
+                <Button
+                  variant="secondary"
+                  size="small"
+                  disabled={!allTags.length}
+                  onClick={async () => {
+                    try {
+                      await copyText(allTags.join(", "));
+                      flash("Copied all tags.");
+                    } catch {
+                      flash("Couldn’t access the clipboard.");
+                    }
+                  }}
+                >
+                  <Clipboard className="size-3.5" />
+                  Copy all
+                </Button>
+              </div>
+              <div className="grid gap-5 p-5 lg:grid-cols-2">
+                <div>
+                  <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-muted">
+                    Tags in every video ({comparison.common.length})
+                  </h3>
+                  <TagChips
+                    tags={comparison.common}
+                    deduplicate
+                    emptyMessage="No shared tags found between these videos."
+                  />
+                </div>
+                <div>
+                  <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-muted">
+                    Tags found in only one video ({comparison.unique.length})
+                  </h3>
+                  <TagChips
+                    tags={comparison.unique}
+                    deduplicate
+                    emptyMessage="No unique tags found."
+                  />
+                </div>
+              </div>
+            </Panel>
+          ) : null}
 
-        <div className="space-y-4">{results.map((item) => <section key={item.input} className="space-y-3">{item.kind === "channel" ? <p className="text-xs font-semibold uppercase tracking-wider text-muted">Channel · {item.videos.length} recent public video{item.videos.length === 1 ? "" : "s"} found</p> : null}{item.videos.map((video) => <VideoCard key={video.id} video={video}><div className="space-y-5"><div><div className="mb-2 flex items-center justify-between"><h3 className="text-xs font-bold uppercase tracking-wider text-muted">Tags added by the uploader</h3><Button variant="ghost" size="small" disabled={!video.tags?.length} onClick={async () => { try { await copyText((deduplicate ? dedupePreservingOriginal(video.tags ?? []) : video.tags ?? []).join(", ")); flash("Copied video tags."); } catch { flash("Couldn’t access the clipboard."); } }}><Clipboard className="size-3" />Copy tags</Button></div><TagChips tags={video.tags ?? []} deduplicate={deduplicate} emptyMessage={video.tagStatus === "unavailable" ? "Tags could not be checked for this video." : video.tagStatus === "empty" ? "This video has no public tags." : "No tags to show for this video."} /></div><div className="grid gap-5 lg:grid-cols-2"><div><h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-muted">Title hashtags</h3>{video.hashtags.title.length ? <TagChips tags={video.hashtags.title} emptyMessage="No hashtags were found in this video’s title." /> : <p className="text-sm text-muted">No hashtags were found in this video’s title.</p>}</div><div><h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-muted">Description hashtags</h3>{video.hashtags.description.length ? <TagChips tags={video.hashtags.description} emptyMessage="No hashtags were found in this video’s description." /> : <p className="text-sm text-muted">No hashtags were found in this video’s description.</p>}</div></div></div></VideoCard>)}</section>)}</div>
-      </div> : null}
+        <div className="space-y-4">{results.map((item) => <section key={item.input} className="space-y-3">{item.kind === "channel" ? <p className="text-xs font-semibold uppercase tracking-wider text-muted">Channel · {item.videos.length} recent public video{item.videos.length === 1 ? "" : "s"} found</p> : null}{item.videos.map((video) => <VideoCard key={video.id} video={video}><div className="space-y-5"><div><div className="mb-2 flex items-center justify-between"><h3 className="text-xs font-bold uppercase tracking-wider text-muted">Tags on this video</h3><Button variant="ghost" size="small" disabled={!video.tags?.length} onClick={async () => { try { await copyText((deduplicate ? dedupePreservingOriginal(video.tags ?? []) : video.tags ?? []).join(", ")); flash("Copied video tags."); } catch { flash("Couldn’t access the clipboard."); } }}><Clipboard className="size-3" />Copy tags</Button></div><TagChips tags={video.tags ?? []} deduplicate={deduplicate} emptyMessage={video.tagStatus === "unavailable" ? "Tags could not be checked for this video." : video.tagStatus === "empty" ? "This video has no public tags." : "No tags found for this video."} /></div><div className="grid gap-5 lg:grid-cols-2"><div><h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-muted">Title hashtags</h3>{video.hashtags.title.length ? <TagChips tags={video.hashtags.title} emptyMessage="No hashtags were found in this video’s title." /> : <p className="text-sm text-muted">No hashtags were found in this video’s title.</p>}</div><div><h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-muted">Description hashtags</h3>{video.hashtags.description.length ? <TagChips tags={video.hashtags.description} emptyMessage="No hashtags were found in this video’s description." /> : <p className="text-sm text-muted">No hashtags were found in this video’s description.</p>}</div></div></div></VideoCard>)}</section>)}</div>
+        </div>
+      ) : null}
       <p className="sr-only" aria-live="polite">{notice}</p>
     </div>
   );

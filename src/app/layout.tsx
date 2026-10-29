@@ -5,10 +5,10 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: {
-    default: "SourceLens — YouTube research with clear sources",
+    default: "SourceLens — Find and research YouTube content",
     template: "%s · SourceLens",
   },
-  description: "Explore topic research, tag extraction, hashtag research, tag comparison, and short-term trends with source data, search-volume estimates, and local calculations kept separate.",
+  description: "Explore video transcripts, tags, topics, hashtags, and trends in one place.",
   applicationName: "SourceLens",
   robots: { index: false, follow: false },
 };

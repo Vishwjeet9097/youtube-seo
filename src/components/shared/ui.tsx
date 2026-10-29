@@ -150,7 +150,7 @@ export function StatCard({
   return (
     <article className="metric-card">
       <div className="flex items-start justify-between gap-3">
-        <p className="pt-1 text-[11px] font-bold uppercase leading-4 tracking-[0.08em] text-muted">{label}</p>
+        <p className="pt-1 text-[12px] font-semibold leading-4 text-muted">{label}</p>
         <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-brand-soft text-brand-strong"><Icon className="size-4" strokeWidth={1.9} aria-hidden="true" /></span>
       </div>
       <p className="mt-3 text-[28px] font-bold leading-none tracking-[-0.04em] text-foreground tabular-nums">{value}</p>

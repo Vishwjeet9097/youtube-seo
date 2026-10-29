@@ -69,18 +69,228 @@ export function CompetitorClient() {
 
   return (
     <div className="page-shell">
-      <PageHeader eyebrow="Compare YouTube tags" title="Tag comparison" description="Compare public tags added by uploaders and returned by YouTube, plus title words and hashtags. Public tags are not searches. Choose a video or channel as the selected reference." actions={result ? <><Button variant="secondary" onClick={save}><Save className="size-4" />Save results</Button><Button variant="secondary" onClick={() => exportData("csv")}><Download className="size-4" />Export CSV</Button><Button variant="secondary" onClick={() => exportData("json")}>Export JSON</Button></> : undefined} />
-      <Panel><form className="p-5 sm:p-6" onSubmit={(event) => { event.preventDefault(); void run(); }}><Field label="YouTube videos or channels" hint="Paste one link, handle, or ID per line. Add 2–20 items, including up to 5 channels. Choose how many recent public videos to check from each channel."><Textarea rows={6} value={inputs} onChange={(event) => setInputs(event.target.value)} placeholder={"Your video or channel\nAnother video or channel\nAnother @channel"} /></Field><div className="mt-4 grid gap-4 sm:grid-cols-[minmax(220px,1fr)_220px_auto]"><Field label="Selected reference"><Select value={referenceIndex} onChange={(event) => setReferenceIndex(Number(event.target.value))} disabled={!lines.length}>{lines.length ? lines.map((line, index) => <option value={index} key={`${line}:${index}`}>{index + 1}. {line.slice(0, 70)}</option>) : <option>No inputs yet</option>}</Select></Field><Field label="Videos to check per channel"><Input type="number" min={1} max={50} value={channelLimit} onChange={(event) => setChannelLimit(Math.min(50, Math.max(1, Number(event.target.value))))} /></Field><Button type="submit" className="self-end" disabled={loading || lines.length < 2}><UsersRound className="size-4" />{loading ? "Comparing tags" : "Compare tags"}</Button></div></form></Panel>
-      {error ? <Callout className="mt-5" tone="danger" title="Couldn’t compare tags">{error}</Callout> : null}
-      {loading ? <Panel className="mt-6"><LoadingState label="Getting tags and comparing videos" /></Panel> : null}
-      {!loading && !result ? <Panel className="mt-6"><EmptyState icon={UsersRound} title="No comparison to show yet" description="Add a video or channel as the selected reference and at least one other item, then select Compare tags. We won’t guess tags that YouTube does not provide." /></Panel> : null}
-      {!loading && result ? <div className="mt-6 space-y-6">
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><Metric label="Videos compared" value={result.sampleSize} /><Metric label="Tags in every video" value={result.commonTags.length} /><Metric label="Missing from selected reference" value={result.missingFromReference.length} /><Metric label="Checked on" value={new Date(result.retrievedAt).toLocaleDateString()} /></div>
-        {result.warnings.length ? <Callout tone="warning" title="Review videos that couldn’t be checked"><ul className="list-disc space-y-1 pl-4">{result.warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul></Callout> : null}
-        <Panel><div className="panel-header"><div><h2 className="text-sm font-semibold">Tag comparison</h2><p className="mt-1 text-xs text-muted">Selected reference: {result.referenceVideoId ?? "No selected reference found"}</p></div><Button variant="secondary" size="small" disabled={!result.missingFromReference.length} onClick={async () => { try { await copyText(result.missingFromReference.join(", ")); flash("Copied tags missing from the selected reference."); } catch { flash("Couldn’t access the clipboard."); } }}><Clipboard className="size-3.5" />Copy missing tags</Button></div><div className="grid gap-px bg-border lg:grid-cols-2"><div className="bg-surface p-5"><h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-muted">Tags in every video ({result.commonTags.length})</h3><TagChips tags={result.commonTags} deduplicate emptyMessage="No shared public tags are available for this comparison." /></div><div className="bg-surface p-5"><h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-muted">Tags missing from selected reference ({result.missingFromReference.length})</h3><TagChips tags={result.missingFromReference} deduplicate emptyMessage={result.referenceVideoId ? "The selected reference is not missing any public tags found in this comparison." : "Tag differences are unavailable because no selected reference could be checked."} /></div></div></Panel>
-        <Panel><div className="panel-header"><div><h2 className="text-sm font-semibold">Words and hashtags in common</h2><p className="mt-1 text-xs text-muted">Words from titles and hashtags are compared separately from uploader-added tags.</p></div></div><div className="grid gap-px bg-border lg:grid-cols-2"><div className="bg-surface p-5"><h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-muted">Words in every title</h3><TagChips tags={result.commonTitleKeywords} deduplicate emptyMessage="No title words are shared by every compared video." /></div><div className="bg-surface p-5"><h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-muted">Hashtags in every video</h3><TagChips tags={result.commonHashtags} deduplicate emptyMessage="No hashtags are shared by every compared video." /></div></div></Panel>
-        <div className="space-y-4">{result.videos.map((item) => <VideoCard key={item.video.id} video={item.video}><h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-muted">Tags added by this uploader</h3><TagChips tags={Object.values(item.normalizedTags)} emptyMessage={item.video.tagStatus === "unavailable" ? "Tags could not be checked for this video." : item.video.tagStatus === "empty" ? "This video has no public tags." : "No tags to show for this video."} /></VideoCard>)}</div>
-      </div> : null}
+      <PageHeader
+        eyebrow="COMPARE TAGS"
+        title="Compare tags"
+        description="Compare tags from two or more videos to see what they have in common."
+        actions={
+          result ? (
+            <>
+              <Button variant="secondary" onClick={save}>
+                <Save className="size-4" />
+                Save results
+              </Button>
+              <Button variant="secondary" onClick={() => exportData("csv")}>
+                <Download className="size-4" />
+                Export CSV
+              </Button>
+              <Button variant="secondary" onClick={() => exportData("json")}>
+                Export JSON
+              </Button>
+            </>
+          ) : undefined
+        }
+      />
+      <Panel>
+        <form
+          className="p-5 sm:p-6"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void run();
+          }}
+        >
+          <Field
+            label="YouTube videos or channels"
+            hint="Paste one link per line (2 to 20 links). You can also choose a reference video to see which tags it is missing."
+          >
+            <Textarea
+              rows={6}
+              value={inputs}
+              onChange={(event) => setInputs(event.target.value)}
+              placeholder={"Your video or channel\nAnother video or channel\nAnother @channel"}
+            />
+          </Field>
+          <div className="mt-4 grid gap-4 sm:grid-cols-[minmax(220px,1fr)_220px_auto]">
+            <Field label="Reference video">
+              <Select
+                value={referenceIndex}
+                onChange={(event) => setReferenceIndex(Number(event.target.value))}
+                disabled={!lines.length}
+              >
+                {lines.length ? (
+                  lines.map((line, index) => (
+                    <option value={index} key={`${line}:${index}`}>
+                      {index + 1}. {line.slice(0, 70)}
+                    </option>
+                  ))
+                ) : (
+                  <option>No inputs yet</option>
+                )}
+              </Select>
+            </Field>
+            <Field label="Videos to check per channel">
+              <Input
+                type="number"
+                min={1}
+                max={50}
+                value={channelLimit}
+                onChange={(event) =>
+                  setChannelLimit(Math.min(50, Math.max(1, Number(event.target.value))))
+                }
+              />
+            </Field>
+            <Button
+              type="submit"
+              className="self-end"
+              disabled={loading || lines.length < 2}
+            >
+              <UsersRound className="size-4" />
+              {loading ? "Comparing tags" : "Compare tags"}
+            </Button>
+          </div>
+        </form>
+      </Panel>
+      {error ? (
+        <Callout className="mt-5" tone="danger" title="Couldn’t compare tags">
+          {error}
+        </Callout>
+      ) : null}
+      {loading ? (
+        <Panel className="mt-6">
+          <LoadingState label="Comparing video tags" />
+        </Panel>
+      ) : null}
+      {!loading && !result ? (
+        <Panel className="mt-6">
+          <EmptyState
+            icon={UsersRound}
+            title="Compare tags across videos"
+            description="Add two or more YouTube links above and select Compare tags."
+          />
+        </Panel>
+      ) : null}
+      {!loading && result ? (
+        <div className="mt-6 space-y-6">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <Metric label="Videos compared" value={result.sampleSize} />
+            <Metric label="Tags in every video" value={result.commonTags.length} />
+            <Metric label="Missing from reference" value={result.missingFromReference.length} />
+            <Metric label="Date checked" value={new Date(result.retrievedAt).toLocaleDateString()} />
+          </div>
+          {result.warnings.length ? (
+            <Callout tone="warning" title="Notes about this comparison">
+              <ul className="list-disc space-y-1 pl-4">
+                {result.warnings.map((warning) => (
+                  <li key={warning}>{warning}</li>
+                ))}
+              </ul>
+            </Callout>
+          ) : null}
+          <Panel>
+            <div className="panel-header">
+              <div>
+                <h2 className="text-sm font-semibold">Tag comparison</h2>
+                <p className="mt-1 text-xs text-muted">
+                  Reference: {result.referenceVideoId ?? "First video"}
+                </p>
+              </div>
+              <Button
+                variant="secondary"
+                size="small"
+                disabled={!result.missingFromReference.length}
+                onClick={async () => {
+                  try {
+                    await copyText(result.missingFromReference.join(", "));
+                    flash("Copied tags missing from the reference video.");
+                  } catch {
+                    flash("Couldn’t access the clipboard.");
+                  }
+                }}
+              >
+                <Clipboard className="size-3.5" />
+                Copy missing tags
+              </Button>
+            </div>
+            <div className="grid gap-px bg-border lg:grid-cols-2">
+              <div className="bg-surface p-5">
+                <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-muted">
+                  Tags in every video ({result.commonTags.length})
+                </h3>
+                <TagChips
+                  tags={result.commonTags}
+                  deduplicate
+                  emptyMessage="No shared tags found between these videos."
+                />
+              </div>
+              <div className="bg-surface p-5">
+                <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-muted">
+                  Tags missing from reference ({result.missingFromReference.length})
+                </h3>
+                <TagChips
+                  tags={result.missingFromReference}
+                  deduplicate
+                  emptyMessage={
+                    result.referenceVideoId
+                      ? "The reference video already has all the tags found in the other videos."
+                      : "Tag differences are unavailable."
+                  }
+                />
+              </div>
+            </div>
+          </Panel>
+          <Panel>
+            <div className="panel-header">
+              <div>
+                <h2 className="text-sm font-semibold">Common title words and hashtags</h2>
+                <p className="mt-1 text-xs text-muted">
+                  Words from video titles and hashtags that appear across these videos.
+                </p>
+              </div>
+            </div>
+            <div className="grid gap-px bg-border lg:grid-cols-2">
+              <div className="bg-surface p-5">
+                <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-muted">
+                  Words in every title
+                </h3>
+                <TagChips
+                  tags={result.commonTitleKeywords}
+                  deduplicate
+                  emptyMessage="No title words are shared by every video."
+                />
+              </div>
+              <div className="bg-surface p-5">
+                <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-muted">
+                  Hashtags in every video
+                </h3>
+                <TagChips
+                  tags={result.commonHashtags}
+                  deduplicate
+                  emptyMessage="No hashtags are shared by every video."
+                />
+              </div>
+            </div>
+          </Panel>
+          <div className="space-y-4">
+            {result.videos.map((item) => (
+              <VideoCard key={item.video.id} video={item.video}>
+                <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-muted">
+                  Tags on this video
+                </h3>
+                <TagChips
+                  tags={Object.values(item.normalizedTags)}
+                  emptyMessage={
+                    item.video.tagStatus === "unavailable"
+                      ? "Tags could not be checked for this video."
+                      : item.video.tagStatus === "empty"
+                        ? "This video has no public tags."
+                        : "No tags found for this video."
+                  }
+                />
+              </VideoCard>
+            ))}
+          </div>
+        </div>
+      ) : null}
       <span className="sr-only" aria-live="polite">{notice}</span>
     </div>
   );

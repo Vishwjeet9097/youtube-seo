@@ -12,7 +12,13 @@ import { replaceWorkspace, resetWorkspace, updateWorkspace, useWorkspace } from 
 import type { SavedProject } from "@/types/research";
 
 const routes: Record<SavedProject["type"], string> = { research: "/keywords", extraction: "/extract", trend: "/trending", competitor: "/competitors", hashtag: "/hashtags" };
-const typeLabels: Record<SavedProject["type"], string> = { research: "Research", extraction: "Tag extraction", trend: "Trend analysis", competitor: "Tag comparison", hashtag: "Hashtag research" };
+const typeLabels: Record<SavedProject["type"], string> = {
+  research: "Topic research",
+  extraction: "Tag extractor",
+  trend: "Keyword trends",
+  competitor: "Compare tags",
+  hashtag: "Hashtag research",
+};
 
 export function SavedResearchClient() {
   const workspace = useWorkspace();
@@ -37,18 +43,365 @@ export function SavedResearchClient() {
 
   return (
     <div className="page-shell">
-      <PageHeader eyebrow="Saved in this browser profile" title="Saved research" description="Your projects, favorites, history, and preferences are saved in this browser profile on this device. Export a backup before clearing browser data or switching profiles, browsers, or devices." actions={<><input ref={inputRef} type="file" accept="application/json,.json" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) void importFile(file); }} /><Button variant="secondary" onClick={() => inputRef.current?.click()}><FileUp className="size-4" />Import backup</Button><Button variant="secondary" onClick={exportAll}><Download className="size-4" />Export backup</Button></>} />
-      {!workspace.available && workspace.hydrated ? <Callout tone="warning" title="Changes cannot be saved">{workspace.error ?? "This browser cannot save changes right now. They may be lost when you refresh or close the page."}</Callout> : null}
-      <div className="mt-6 flex gap-1 overflow-x-auto rounded-xl border bg-surface p-1" role="tablist" aria-label="Saved research sections">{(["projects", "favorites", "history", "preferences"] as const).map((value) => <button key={value} onClick={() => setTab(value)} role="tab" aria-selected={tab === value} className={`shrink-0 rounded-lg px-4 py-2 text-xs font-semibold capitalize ${tab === value ? "bg-brand-soft text-brand-strong" : "text-muted hover:bg-surface-muted"}`}>{value}{value === "projects" ? ` ${workspace.state.projects.length}` : value === "favorites" ? ` ${workspace.state.favoriteKeywords.length}` : ""}</button>)}</div>
+      <PageHeader
+        eyebrow="SAVED ON THIS DEVICE"
+        title="Saved items"
+        description="Your saved research stays in this browser. Export a backup before clearing your browser data or switching devices."
+        actions={
+          <>
+            <input
+              ref={inputRef}
+              type="file"
+              accept="application/json,.json"
+              className="hidden"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                if (file) void importFile(file);
+              }}
+            />
+            <Button variant="secondary" onClick={() => inputRef.current?.click()}>
+              <FileUp className="size-4" />
+              Import backup
+            </Button>
+            <Button variant="secondary" onClick={exportAll}>
+              <Download className="size-4" />
+              Export backup
+            </Button>
+          </>
+        }
+      />
+      {!workspace.available && workspace.hydrated ? (
+        <Callout tone="warning" title="Changes cannot be saved">
+          {workspace.error ?? "This browser cannot save changes right now. They may be lost when you refresh or close the page."}
+        </Callout>
+      ) : null}
+      <div className="mt-6 flex gap-1 overflow-x-auto rounded-xl border bg-surface p-1" role="tablist" aria-label="Saved research sections">
+        {(["projects", "favorites", "history", "preferences"] as const).map((value) => {
+          const tabLabels = {
+            projects: "Saved items",
+            favorites: "Favorites",
+            history: "History",
+            preferences: "Settings",
+          };
+          return (
+            <button
+              key={value}
+              onClick={() => setTab(value)}
+              role="tab"
+              aria-selected={tab === value}
+              className={`shrink-0 rounded-lg px-4 py-2 text-xs font-semibold ${tab === value ? "bg-brand-soft text-brand-strong" : "text-muted hover:bg-surface-muted"}`}
+            >
+              {tabLabels[value]}
+              {value === "projects"
+                ? ` (${workspace.state.projects.length})`
+                : value === "favorites"
+                  ? ` (${workspace.state.favoriteKeywords.length})`
+                  : ""}
+            </button>
+          );
+        })}
+      </div>
 
       <div className="mt-5">
-        {tab === "projects" ? <Panel className="overflow-hidden"><div className="panel-header"><div><h2 className="text-sm font-semibold">Projects</h2><p className="mt-1 text-xs text-muted">Research projects saved in this browser profile.</p></div></div>{workspace.state.projects.length ? <div className="divide-y">{workspace.state.projects.map((project) => <ProjectRow key={project.id} project={project} flash={flash} />)}</div> : <EmptyState icon={Bookmark} title="No saved projects" description="Save results from any research tool to keep them in this browser profile." />}</Panel> : null}
+        {tab === "projects" ? (
+          <Panel className="overflow-hidden">
+            <div className="panel-header">
+              <div>
+                <h2 className="text-sm font-semibold">Saved items</h2>
+                <p className="mt-1 text-xs text-muted">Research saved on this device.</p>
+              </div>
+            </div>
+            {workspace.state.projects.length ? (
+              <div className="divide-y">
+                {workspace.state.projects.map((project) => (
+                  <ProjectRow key={project.id} project={project} flash={flash} />
+                ))}
+              </div>
+            ) : (
+              <EmptyState
+                icon={Bookmark}
+                title="No saved items yet"
+                description="Save results from any research tool to keep them on this device."
+              />
+            )}
+          </Panel>
+        ) : null}
 
-        {tab === "favorites" ? <Panel className="overflow-hidden"><div className="panel-header"><div><h2 className="text-sm font-semibold">Favorites</h2><p className="mt-1 text-xs text-muted">Keywords you starred in research results.</p></div>{workspace.state.favoriteKeywords.length ? <Button variant="danger" size="small" onClick={() => updateWorkspace((state) => ({ ...state, favoriteKeywords: [] }))}><Trash2 className="size-3.5" />Delete all favorites</Button> : null}</div>{workspace.state.favoriteKeywords.length ? <div className="flex flex-wrap gap-2 p-5">{workspace.state.favoriteKeywords.map((keyword) => <span key={keyword} className="inline-flex items-center gap-2 rounded-lg border bg-surface-muted px-3 py-2 text-sm font-medium"><Star className="size-3.5 fill-warning text-warning" />{keyword}<button onClick={() => updateWorkspace((state) => ({ ...state, favoriteKeywords: state.favoriteKeywords.filter((item) => item !== keyword) }))} className="text-muted hover:text-danger" aria-label={`Remove ${keyword}`}><Trash2 className="size-3.5" /></button></span>)}</div> : <EmptyState icon={Star} title="No favorite keywords" description="Star a keyword in a research results table to find it here." />}</Panel> : null}
+        {tab === "favorites" ? (
+          <Panel className="overflow-hidden">
+            <div className="panel-header">
+              <div>
+                <h2 className="text-sm font-semibold">Favorite keywords</h2>
+                <p className="mt-1 text-xs text-muted">Keywords you starred in research results.</p>
+              </div>
+              {workspace.state.favoriteKeywords.length ? (
+                <Button
+                  variant="danger"
+                  size="small"
+                  onClick={() => updateWorkspace((state) => ({ ...state, favoriteKeywords: [] }))}
+                >
+                  <Trash2 className="size-3.5" />
+                  Delete all favorites
+                </Button>
+              ) : null}
+            </div>
+            {workspace.state.favoriteKeywords.length ? (
+              <div className="flex flex-wrap gap-2 p-5">
+                {workspace.state.favoriteKeywords.map((keyword) => (
+                  <span
+                    key={keyword}
+                    className="inline-flex items-center gap-2 rounded-lg border bg-surface-muted px-3 py-2 text-sm font-medium"
+                  >
+                    <Star className="size-3.5 fill-warning text-warning" />
+                    {keyword}
+                    <button
+                      onClick={() =>
+                        updateWorkspace((state) => ({
+                          ...state,
+                          favoriteKeywords: state.favoriteKeywords.filter((item) => item !== keyword),
+                        }))
+                      }
+                      className="text-muted hover:text-danger"
+                      aria-label={`Remove ${keyword}`}
+                    >
+                      <Trash2 className="size-3.5" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <EmptyState
+                icon={Star}
+                title="No favorite keywords"
+                description="Star a keyword in any results table to find it here."
+              />
+            )}
+          </Panel>
+        ) : null}
 
-        {tab === "history" ? <div className="grid gap-5 xl:grid-cols-2"><Panel className="overflow-hidden"><div className="panel-header"><div><h2 className="text-sm font-semibold">History</h2><p className="mt-1 text-xs text-muted">Your 100 most recent activities in this browser profile.</p></div>{workspace.state.activities.length ? <Button variant="danger" size="small" onClick={() => updateWorkspace((state) => ({ ...state, activities: [] }))}><Trash2 className="size-3.5" />Delete history</Button> : null}</div>{workspace.state.activities.length ? <ul className="divide-y">{workspace.state.activities.map((item) => <li key={item.id} className="flex gap-3 px-5 py-3"><History className="mt-0.5 size-4 text-muted" /><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{item.label}</p><p className="text-xs text-muted">{typeLabels[item.operation]} · {item.resultCount} {item.resultCount === 1 ? "result" : "results"} · {formatDate(item.createdAt, true)}</p></div></li>)}</ul> : <EmptyState icon={History} title="No activity history" description="Completed research activity will appear here." compact />}</Panel><Panel className="overflow-hidden"><div className="panel-header"><div><h2 className="text-sm font-semibold">Export history</h2><p className="mt-1 text-xs text-muted">This list keeps file details only; exported files are not saved here.</p></div></div>{workspace.state.exportHistory.length ? <ul className="divide-y">{workspace.state.exportHistory.map((item) => <li key={item.id} className="px-5 py-3"><p className="truncate text-sm font-medium">{item.filename}</p><p className="text-xs text-muted">{item.format.toUpperCase()} · {item.rowCount} rows · {formatDate(item.createdAt, true)}</p></li>)}</ul> : <EmptyState icon={Download} title="No exports recorded" description="Details about CSV and JSON exports will appear here. The files themselves are not saved here." compact />}</Panel></div> : null}
+        {tab === "history" ? (
+          <div className="grid gap-5 xl:grid-cols-2">
+            <Panel className="overflow-hidden">
+              <div className="panel-header">
+                <div>
+                  <h2 className="text-sm font-semibold">Search history</h2>
+                  <p className="mt-1 text-xs text-muted">Your recent research activity on this device.</p>
+                </div>
+                {workspace.state.activities.length ? (
+                  <Button
+                    variant="danger"
+                    size="small"
+                    onClick={() => updateWorkspace((state) => ({ ...state, activities: [] }))}
+                  >
+                    <Trash2 className="size-3.5" />
+                    Clear history
+                  </Button>
+                ) : null}
+              </div>
+              {workspace.state.activities.length ? (
+                <ul className="divide-y">
+                  {workspace.state.activities.map((item) => (
+                    <li key={item.id} className="flex gap-3 px-5 py-3">
+                      <History className="mt-0.5 size-4 text-muted" />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium">{item.label}</p>
+                        <p className="text-xs text-muted">
+                          {typeLabels[item.operation]} · {item.resultCount} {item.resultCount === 1 ? "result" : "results"} · {formatDate(item.createdAt, true)}
+                        </p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <EmptyState
+                  icon={History}
+                  title="No search history"
+                  description="Completed research will appear here."
+                  compact
+                />
+              )}
+            </Panel>
+            <Panel className="overflow-hidden">
+              <div className="panel-header">
+                <div>
+                  <h2 className="text-sm font-semibold">Export history</h2>
+                  <p className="mt-1 text-xs text-muted">
+                    Record of CSV and JSON files downloaded from SourceLens.
+                  </p>
+                </div>
+              </div>
+              {workspace.state.exportHistory.length ? (
+                <ul className="divide-y">
+                  {workspace.state.exportHistory.map((item) => (
+                    <li key={item.id} className="px-5 py-3">
+                      <p className="truncate text-sm font-medium">{item.filename}</p>
+                      <p className="text-xs text-muted">
+                        {item.format.toUpperCase()} · {item.rowCount} rows · {formatDate(item.createdAt, true)}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <EmptyState
+                  icon={Download}
+                  title="No exports recorded"
+                  description="Details about your exported files will appear here."
+                  compact
+                />
+              )}
+            </Panel>
+          </div>
+        ) : null}
 
-        {tab === "preferences" ? <div className="grid gap-5 xl:grid-cols-[1fr_380px]"><Panel><div className="panel-header"><div><h2 className="text-sm font-semibold">Preferences</h2><p className="mt-1 text-xs text-muted">These settings are used when you start new research.</p></div></div><div className="grid gap-4 p-5 sm:grid-cols-2"><Field label="Theme"><Select value={workspace.state.preferences.theme} onChange={(event) => updateWorkspace((state) => ({ ...state, preferences: { ...state.preferences, theme: event.target.value as "system" | "light" | "dark" } }))}><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></Select></Field><Field label="Default region"><RegionSelect value={workspace.state.preferences.defaultRegion} onChange={(event) => updateWorkspace((state) => ({ ...state, preferences: { ...state.preferences, defaultRegion: event.target.value } }))} /></Field><Field label="Default language"><LanguageSelect value={workspace.state.preferences.defaultLanguage} onChange={(event) => updateWorkspace((state) => ({ ...state, preferences: { ...state.preferences, defaultLanguage: event.target.value } }))} /></Field><div className="space-y-3 pt-6"><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={workspace.state.preferences.deduplicateTags} onChange={(event) => updateWorkspace((state) => ({ ...state, preferences: { ...state.preferences, deduplicateTags: event.target.checked } }))} className="size-4 accent-[var(--brand)]" />Hide duplicate tags by default</label><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={workspace.state.preferences.suggestionsEnabled} onChange={(event) => updateWorkspace((state) => ({ ...state, preferences: { ...state.preferences, suggestionsEnabled: event.target.checked } }))} className="size-4 accent-[var(--brand)]" />Use autocomplete suggestions when available</label></div><div className="sm:col-span-2"><Button variant="secondary" onClick={() => updateWorkspace((state) => ({ ...state, preferences: { theme: "system", defaultRegion: "US", defaultLanguage: "en", deduplicateTags: false, suggestionsEnabled: true } }))}><RotateCcw className="size-4" />Restore default settings</Button></div></div></Panel><Panel className="h-fit border-danger/25"><div className="panel-header"><div><h2 className="text-sm font-semibold text-danger">Delete saved data</h2><p className="mt-1 text-xs text-muted">You can recover this data only from a backup.</p></div></div><div className="p-5">{confirmReset ? <Callout tone="danger" title="Delete all saved data?"><p className="mb-3">Delete projects, history, favorites, comparison history, export history, trend snapshots, and preferences from this browser profile?</p><div className="flex gap-2"><Button variant="danger" size="small" onClick={() => { const reset = resetWorkspace(); setConfirmReset(false); flash(reset.ok ? "Saved data deleted." : reset.error ?? "Could not delete saved data."); }}><Trash2 className="size-3.5" />Yes, delete all saved data</Button><Button variant="secondary" size="small" onClick={() => setConfirmReset(false)}>Cancel</Button></div></Callout> : <Button variant="danger" onClick={() => setConfirmReset(true)}><Trash2 className="size-4" />Delete all saved data</Button>}</div></Panel></div> : null}
+        {tab === "preferences" ? (
+          <div className="grid gap-5 xl:grid-cols-[1fr_380px]">
+            <Panel>
+              <div className="panel-header">
+                <div>
+                  <h2 className="text-sm font-semibold">Settings</h2>
+                  <p className="mt-1 text-xs text-muted">Default settings for new research.</p>
+                </div>
+              </div>
+              <div className="grid gap-4 p-5 sm:grid-cols-2">
+                <Field label="Theme">
+                  <Select
+                    value={workspace.state.preferences.theme}
+                    onChange={(event) =>
+                      updateWorkspace((state) => ({
+                        ...state,
+                        preferences: {
+                          ...state.preferences,
+                          theme: event.target.value as "system" | "light" | "dark",
+                        },
+                      }))
+                    }
+                  >
+                    <option value="system">System</option>
+                    <option value="light">Light</option>
+                    <option value="dark">Dark</option>
+                  </Select>
+                </Field>
+                <Field label="Default region">
+                  <RegionSelect
+                    value={workspace.state.preferences.defaultRegion}
+                    onChange={(event) =>
+                      updateWorkspace((state) => ({
+                        ...state,
+                        preferences: { ...state.preferences, defaultRegion: event.target.value },
+                      }))
+                    }
+                  />
+                </Field>
+                <Field label="Default language">
+                  <LanguageSelect
+                    value={workspace.state.preferences.defaultLanguage}
+                    onChange={(event) =>
+                      updateWorkspace((state) => ({
+                        ...state,
+                        preferences: { ...state.preferences, defaultLanguage: event.target.value },
+                      }))
+                    }
+                  />
+                </Field>
+                <div className="space-y-3 pt-6">
+                  <label className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={workspace.state.preferences.deduplicateTags}
+                      onChange={(event) =>
+                        updateWorkspace((state) => ({
+                          ...state,
+                          preferences: {
+                            ...state.preferences,
+                            deduplicateTags: event.target.checked,
+                          },
+                        }))
+                      }
+                      className="size-4 accent-[var(--brand)]"
+                    />
+                    Hide duplicate tags by default
+                  </label>
+                  <label className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={workspace.state.preferences.suggestionsEnabled}
+                      onChange={(event) =>
+                        updateWorkspace((state) => ({
+                          ...state,
+                          preferences: {
+                            ...state.preferences,
+                            suggestionsEnabled: event.target.checked,
+                          },
+                        }))
+                      }
+                      className="size-4 accent-[var(--brand)]"
+                    />
+                    Use search suggestions when available
+                  </label>
+                </div>
+                <div className="sm:col-span-2">
+                  <Button
+                    variant="secondary"
+                    onClick={() =>
+                      updateWorkspace((state) => ({
+                        ...state,
+                        preferences: {
+                          theme: "system",
+                          defaultRegion: "US",
+                          defaultLanguage: "en",
+                          deduplicateTags: false,
+                          suggestionsEnabled: true,
+                        },
+                      }))
+                    }
+                  >
+                    <RotateCcw className="size-4" />
+                    Reset to default settings
+                  </Button>
+                </div>
+              </div>
+            </Panel>
+            <Panel className="h-fit border-danger/25">
+              <div className="panel-header">
+                <div>
+                  <h2 className="text-sm font-semibold text-danger">Delete saved data</h2>
+                  <p className="mt-1 text-xs text-muted">You can recover this data only from an exported backup.</p>
+                </div>
+              </div>
+              <div className="p-5">
+                {confirmReset ? (
+                  <Callout tone="danger" title="Delete all saved data?">
+                    <p className="mb-3">
+                      Delete saved items, history, favorites, and settings from this browser?
+                    </p>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="danger"
+                        size="small"
+                        onClick={() => {
+                          const reset = resetWorkspace();
+                          setConfirmReset(false);
+                          flash(reset.ok ? "Saved data deleted." : reset.error ?? "Could not delete saved data.");
+                        }}
+                      >
+                        <Trash2 className="size-3.5" />
+                        Yes, delete all
+                      </Button>
+                      <Button variant="secondary" size="small" onClick={() => setConfirmReset(false)}>
+                        Cancel
+                      </Button>
+                    </div>
+                  </Callout>
+                ) : (
+                  <Button variant="danger" onClick={() => setConfirmReset(true)}>
+                    <Trash2 className="size-4" />
+                    Delete all saved data
+                  </Button>
+                )}
+              </div>
+            </Panel>
+          </div>
+        ) : null}
       </div>
       <span className="sr-only" aria-live="polite">{notice}</span>
     </div>

@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import { SourcesClient } from "@/components/pages/sources-client";
 
 export const metadata: Metadata = {
-  title: "Sources and methods",
-  description: "Review source availability, metric definitions, methods, and limits.",
+  title: "Data sources",
+  description: "See how we collect data, what each number means, and where our estimates come from.",
 };
 
 export default function SourcesPage() {

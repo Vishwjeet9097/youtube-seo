@@ -164,14 +164,14 @@ export function KeywordTable({
           </div>
           <div className="grid grid-cols-2 gap-2 sm:flex">
             <Select value={rankingMode} onChange={(event) => setRankingMode(event.target.value as RankingMode)} aria-label="Rank results by" className="sm:w-48">
-              <option value="observed">Occurrences in sample</option>
-              <option value="demand">Reported search volume</option>
+              <option value="observed">Appearances in videos</option>
+              <option value="demand">Estimated search volume</option>
             </Select>
             <Select value={sort} onChange={(event) => setSort(event.target.value as SortKey)} aria-label="Sort results by" className="sm:w-52">
-              <option value="prevalence">Most occurrences in sample</option>
-              <option value="demand">Highest reported search volume</option>
-              <option value="trend">Largest increase</option>
-              <option value="competition">Lowest competition score</option>
+              <option value="prevalence">Most video appearances</option>
+              <option value="demand">Highest estimated volume</option>
+              <option value="trend">Largest trend increase</option>
+              <option value="competition">Lowest competition</option>
               <option value="recent">Most recently recorded</option>
               <option value="alphabetical">Keyword A–Z</option>
             </Select>
@@ -186,8 +186,8 @@ export function KeywordTable({
             <label className="text-xs text-muted"><span className="mb-1 block">Trend</span><Select value={trend} onChange={(event) => setTrend(event.target.value as TrendStatus | "all")}><option value="all">All trends</option><option value="rising">Rising</option><option value="stable">Stable</option><option value="falling">Falling</option><option value="new_observation">No comparison yet</option><option value="unavailable">Not available</option></Select></label>
             <label className="text-xs text-muted"><span className="mb-1 block">Minimum source matches</span><Input type="number" min={0} value={minimumEvidence} onChange={(event) => setMinimumEvidence(Math.max(0, Number(event.target.value)))} /></label>
             <label className="flex items-end gap-2 pb-2 text-xs font-medium text-muted"><input type="checkbox" checked={exact} onChange={(event) => setExact(event.target.checked)} className="size-4 accent-[var(--brand)]" />Exact match</label>
-            <label className="text-xs text-muted"><span className="mb-1 block">Minimum reported volume</span><Input type="number" min={0} value={minimumVolume} onChange={(event) => setMinimumVolume(event.target.value)} placeholder="No minimum" /></label>
-            <label className="text-xs text-muted"><span className="mb-1 block">Maximum reported volume</span><Input type="number" min={0} value={maximumVolume} onChange={(event) => setMaximumVolume(event.target.value)} placeholder="No maximum" /></label>
+            <label className="text-xs text-muted"><span className="mb-1 block">Minimum estimated volume</span><Input type="number" min={0} value={minimumVolume} onChange={(event) => setMinimumVolume(event.target.value)} placeholder="No minimum" /></label>
+            <label className="text-xs text-muted"><span className="mb-1 block">Maximum estimated volume</span><Input type="number" min={0} value={maximumVolume} onChange={(event) => setMaximumVolume(event.target.value)} placeholder="No maximum" /></label>
             <label className="text-xs text-muted"><span className="mb-1 block">Recorded after</span><Input type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} /></label>
             <label className="text-xs text-muted"><span className="mb-1 block">Recorded before</span><Input type="date" value={endDate} onChange={(event) => setEndDate(event.target.value)} /></label>
           </div>
@@ -195,7 +195,7 @@ export function KeywordTable({
       </div>
 
       {rankingMode === "demand" && rows.length > 0 && !rows.some((row) => row.searchVolume !== null) ? (
-        <div className="p-4"><Callout tone="warning" title="No reported search volume">No keyword source is connected. Choose Occurrences in sample to review these results.</Callout></div>
+        <div className="p-4"><Callout tone="warning" title="No estimated search volume">No keyword data provider is connected. Switch to Appearances in videos to review these results.</Callout></div>
       ) : null}
 
       {filtered.length === 0 ? (
@@ -213,7 +213,7 @@ export function KeywordTable({
                   }
                   return next;
                 })} aria-label="Select rows on this page" className="size-4 accent-[var(--brand)]" /></th>
-                <th>Keyword</th><th>Source</th><th>Reported search volume</th><th>Trend</th><th>Competition score</th><th>Source details</th><th>Videos in sample</th><th>Average views</th><th>Recorded</th>
+                <th>Keyword</th><th>Source</th><th>Search volume (est.)</th><th>Trend</th><th>Competition</th><th>Source details</th><th>Videos found</th><th>Average views</th><th>Date recorded</th>
               </tr></thead>
               <tbody>{visible.map((row) => {
                 const key = rowKey(row);

@@ -65,7 +65,7 @@ export function TrendTable({ rows, title, exportLabel }: { rows: readonly TermAg
   return (
     <section className="panel overflow-hidden">
       <div className="panel-header">
-        <div><h2 className="text-sm font-semibold">{title}</h2><p className="mt-1 text-xs text-muted">How often each term appears in videos in this sample. Sample appearances are not searches. Copy and export use selected rows in the current filtered view. If no visible rows are selected, they use all rows shown.</p></div>
+        <div><h2 className="text-sm font-semibold">{title}</h2><p className="mt-1 text-xs text-muted">How often each term appears in the analyzed videos. These counts show how often creators use a term, not how often people search for it.</p></div>
         <div className="flex flex-wrap gap-2">
           <Button variant="secondary" size="small" disabled={!chosen.length} onClick={async () => { try { await copyText(chosen.map((row) => row.kind === "hashtag" ? `#${row.term.replace(/^#/u, "")}` : row.term).join("\n")); flash(`Copied ${chosen.length} row${chosen.length === 1 ? "" : "s"}.`); } catch { flash("Couldn’t access the clipboard."); } }}><Clipboard className="size-3.5" />Copy terms</Button>
           <Button variant="secondary" size="small" disabled={!chosen.length} onClick={() => exportData("csv")}><Download className="size-3.5" />Export CSV</Button>
@@ -80,7 +80,7 @@ export function TrendTable({ rows, title, exportLabel }: { rows: readonly TermAg
       {!filtered.length ? <EmptyState icon={Search} title="No matching terms" description={rows.length ? "Try changing the filters." : "No terms of this type were found in the videos in sample."} compact /> : (
         <div className="table-wrap"><table className="data-table !min-w-[1250px]"><thead><tr>
           <th className="w-10"><input type="checkbox" aria-label="Select all shown terms" checked={filtered.every((row) => selected.has(row.normalizedTerm))} onChange={(event) => setSelected(event.target.checked ? new Set(filtered.map((row) => row.normalizedTerm)) : new Set())} className="size-4 accent-[var(--brand)]" /></th>
-          <th>Term</th><th>Sample source</th><th>Videos in sample</th><th>Channels</th><th>Average views</th><th>Median views</th><th>Change in sample share</th><th>View change for same videos</th><th>Publish dates</th><th>Sample dates</th><th>Video links</th>
+          <th>Term</th><th>Source</th><th>Videos found</th><th>Channels</th><th>Average views</th><th>Median views</th><th>Trend</th><th>View change</th><th>Publish dates</th><th>Date analyzed</th><th>Video links</th>
         </tr></thead><tbody>{filtered.map((row) => <tr key={`${row.kind}:${row.normalizedTerm}`}>
           <td><input type="checkbox" checked={selected.has(row.normalizedTerm)} onChange={() => setSelected((current) => { const next = new Set(current); if (next.has(row.normalizedTerm)) next.delete(row.normalizedTerm); else next.add(row.normalizedTerm); return next; })} aria-label={`Select ${row.term}`} className="size-4 accent-[var(--brand)]" /></td>
           <td className="max-w-64 font-semibold">{row.kind === "hashtag" ? `#${row.term.replace(/^#/u, "")}` : row.term}</td>
